@@ -1,0 +1,36 @@
+命令列表:
+获取帮助
+> /help
+> /帮助
+
+关注主播
+> /followStreamer uid
+> /关注主播 uid
+> 从B站app转发直播间
+
+取关主播
+> /unfollowStreamer uid
+> /切割主播 uid
+
+关注up主
+> /followUp uid
+> /关注up
+> 从B站app转发个人空间
+
+取关up主
+> /unfollowUp uid
+> /取关up主 uid
+
+关注影视/番剧
+> /followTelegram epid
+> /关注影视 epid
+> 从B站app转发播放页面(推荐)
+
+取关影视/番剧
+> /unfollowTelegram epid
+> /取关影视 epid
+
+查询关注
+> /listFollowing
+> /查询关注
+> /查询成分
