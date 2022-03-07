@@ -1,0 +1,2 @@
+# nonebot_plugin_bilibilibot
+基于Nonebot的bilibili通知插件，可将up主，主播以及番剧的更新/直播动态推送到QQ
