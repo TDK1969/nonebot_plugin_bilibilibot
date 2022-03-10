@@ -22,10 +22,17 @@
 - 可通过分享番剧播放页面进行关注番剧
 
 ## 示例
+### 获取帮助
+![help](docs/help.jpg)
 ### 视频更新推送
-
+![videupdate](/docs/updatepush.jpg)
+![videopush](/docs/videopush.jpg)
 ### 直播开播推送
+![streampuah](docs/streampush.jpg)
 ### 通过B站客户端分享进行关注
+![follow](docs/follow.jpg)
+### 查询关注列表
+![list](docs/list.jpg)
 
 
 
