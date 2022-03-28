@@ -31,16 +31,18 @@
 
 # 示例
 ## 获取帮助
-![help](docs/help.jpg)
+![help](https://github.com/TDK1969/nonebot_plugin_bilibilibot/blob/main/docs/help.jpg?raw=true)
 ## 视频更新推送
-![videupdate](/docs/updatepush.jpg)
-![videopush](/docs/videopush.jpg)
+![videopush](https://github.com/TDK1969/nonebot_plugin_bilibilibot/blob/main/docs/updatepush.jpg?raw=true)
+## 番剧更新推送
+![videupdate](https://github.com/TDK1969/nonebot_plugin_bilibilibot/blob/main/docs/videopush.jpg?raw=true)
 ## 直播开播推送
-![streampuah](docs/streampush.jpg)
+![streampuah](https://github.com/TDK1969/nonebot_plugin_bilibilibot/blob/main/docs/streampush.jpg?raw=true)
 ## 通过B站客户端分享进行关注
-![follow](docs/follow.jpg)
+![follow](https://github.com/TDK1969/nonebot_plugin_bilibilibot/blob/main/docs/follow.jpg?raw=true)
 ## 查询关注列表
-![list](docs/list.jpg)
+![list](https://github.com/TDK1969/nonebot_plugin_bilibilibot/blob/main/docs/list.jpg?raw=true)
+
 
 
 
