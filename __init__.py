@@ -1,10 +1,9 @@
-from syslog import LOG_DAEMON
 from nonebot import get_driver, on_command, on_message, require, permission
 from nonebot.rule import to_me
 from nonebot.log import logger
 from nonebot.rule import to_me, regex
 from nonebot.matcher import Matcher
-from nonebot.adapters.onebot.v11 import Message, MessageSegment, MessageEvent
+from nonebot.adapters.onebot.v11 import Message, MessageEvent
 from nonebot.params import  CommandArg
 
 from .config import Config

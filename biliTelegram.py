@@ -1,4 +1,3 @@
-from cmath import log
 import requests
 import json
 from typing import Tuple, List
@@ -6,14 +5,9 @@ import sys
 import os
 import traceback
 import nonebot
-from nonebot import permission
 from nonebot.log import logger
-from nonebot import require
-from nonebot import on_command
-from nonebot.rule import to_me
-from nonebot.matcher import Matcher
-from nonebot.adapters.onebot.v11 import Message, MessageSegment
-from nonebot.params import Arg, CommandArg, ArgPlainText
+from nonebot.adapters.onebot.v11 import MessageSegment
+
 
 __PLUGIN_NAME = "B站整合~影视/番剧"
 biliTeleInfoUrl = 'https://api.bilibili.com/pgc/web/season/section?season_id={}'

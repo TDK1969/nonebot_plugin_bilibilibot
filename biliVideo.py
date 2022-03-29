@@ -6,13 +6,7 @@ import os
 import traceback
 import nonebot
 from nonebot.log import logger
-from nonebot import require
-from nonebot import on_command
-from nonebot.rule import to_me
-from nonebot.matcher import Matcher
-from nonebot.adapters.onebot.v11 import Message, MessageSegment
-from nonebot.params import Arg, CommandArg, ArgPlainText
-from nonebot import permission
+from nonebot.adapters.onebot.v11 import MessageSegment
 
 __PLUGIN_NAME = "B站整合~视频"
 baseUrl = 'https://api.bilibili.com/x/space/arc/search?mid={}&ps=30&tid=0&pn=1&keyword=&order=pubdate&jsonp=jsonp'
