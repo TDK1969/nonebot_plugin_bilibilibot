@@ -17,8 +17,9 @@
 **已支持v2.0.0-beta.2**
 ## 依赖
 - 适配器: onebot v11
+- [go-cqhttp](https://github.com/Mrs4s/go-cqhttp)
 - 插件:
-    - nonebot_plugin_apscheduler
+    - [nonebot_plugin_apscheduler](https://pypi.org/project/nonebot-plugin-apscheduler/)
 
 # 注意
 - 请**不要将机器人加入群**，相关功能正在开发中
