@@ -15,6 +15,10 @@
 基于[Nonebot2](https://github.com/nonebot/nonebot2)的bilibili通知插件，可将up主，主播以及番剧的更新/直播动态推送到QQ
 
 **已支持v2.0.0-beta.2**
+## 依赖
+- 适配器: onebot v11
+- 插件:
+    - nonebot_plugin_apscheduler
 
 # 注意
 - 请**不要将机器人加入群**，相关功能正在开发中
