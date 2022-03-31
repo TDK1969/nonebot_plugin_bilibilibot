@@ -7,11 +7,22 @@
 # nonebot-plugin-bilibilibot
 
 👾 _NoneBot bilibili通知插件_ 👾
+<p>version: 1.1</p>
     
 </div>
 
 # 简介
 基于[Nonebot2](https://github.com/nonebot/nonebot2)的bilibili通知插件，可将up主，主播以及番剧的更新/直播动态推送到QQ
+
+**已支持v2.0.0-beta.2**
+## 依赖
+- 适配器: onebot v11
+- [go-cqhttp](https://github.com/Mrs4s/go-cqhttp)
+- 插件:
+    - [nonebot_plugin_apscheduler](https://pypi.org/project/nonebot-plugin-apscheduler/)
+
+# 注意
+- 请**不要将机器人加入群**，相关功能正在开发中
 
 # 特色功能
 - 可通过在B站客户端分享用户主页进行关注up主

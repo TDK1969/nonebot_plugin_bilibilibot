@@ -8,6 +8,7 @@ from nonebot.adapters.onebot.v11.permission import GROUP_ADMIN, GROUP_OWNER, PRI
 from nonebot.adapters.onebot.v11.event import GroupMessageEvent, PrivateMessageEvent
 from nonebot.params import CommandArg
 
+
 from .config import Config
 
 from .biliStream import *

@@ -1,13 +1,11 @@
-from cmath import log
 from typing import List, Tuple
 import json
 import re
-from nonebot import on_command
 import requests
 import os
 from nonebot import get_bot
 from nonebot.log import logger
-from nonebot.adapters.onebot.v11 import Message
+
 
 __PLUGIN_NAME = "[B站整合~基础]"
 
