@@ -12,21 +12,15 @@ from nonebot.adapters.onebot.v11 import Message
 __PLUGIN_NAME = "[B站整合~基础]"
 
 async def createUserFile(userFile: str, nickName: str, streamers: List[str]=[], ups: List[str]=[], telegrams: List[str]=[]):
-    """
-    @description  :
-    创建用户文件，包含用户名，关注的主播，关注的up主以及关注的节目
-    ---------
-    @param  :
-    userFile: 创建的文件名
-    nickName: 用户名
-    streamers: 关注的主播列表s
-    ups: 关注的up主列表
-    telegrams: 关注的节目列表
-    -------
-    @Returns  :
-    无返回值
-    -------
-    """
+    '''创建用户/群文件
+
+    Args:
+        userFile (str): 文件路径
+        nickName (str): 用户名/群名
+        streamers (List[str], optional): 关注的主播. Defaults to [].
+        ups (List[str], optional): 关注的up主. Defaults to [].
+        telegrams (List[str], optional): 关注的番剧. Defaults to [].
+    '''
     
     with open(userFile, 'w+') as f:
             userInfo = [nickName, streamers, ups, telegrams]
@@ -36,10 +30,10 @@ async def createUserFile(userFile: str, nickName: str, streamers: List[str]=[], 
 async def FollowModifyUserFile(userFile: str, successList: List[str], type: int):
     """
     @description  :
-    根据用户的关注操作，修改用户文件
+    根据用户的关注操作，修改用户/群文件
     ---------
     @param  :
-    userFile:       用户的文件名
+    userFile:       用户/群的文件名
     successList:    成功关注的列表
     type:           1 - 主播, 2 - up主, 3 - 节目
     -------
@@ -55,7 +49,7 @@ async def FollowModifyUserFile(userFile: str, successList: List[str], type: int)
         f.seek(0)
         f.truncate()
         json.dump(userInfo, f)
-        logger.debug(f'{__PLUGIN_NAME}用户文件更新成功')
+        logger.debug(f'{__PLUGIN_NAME}用户{userInfo[0]}文件更新成功')
 
 async def UnfollowModifyUserFile(userFile: str, successList: List[str], type: int):
     """
