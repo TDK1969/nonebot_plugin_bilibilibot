@@ -32,6 +32,9 @@
 
 - 将机器人加入群组，向群友及时同时直播或更新消息
 
+# 安装方式
+- ` nb plugin install nonebot-plugin-bilibilibot`
+
 # 配置项
 配置方式: 请在nonebot的全局配置文件中添加如下配置项。
 ## SUPERUSERS
