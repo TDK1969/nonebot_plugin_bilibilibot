@@ -47,7 +47,7 @@
 
 # 示例
 ## 获取帮助
-![help](https://github.com/TDK1969/nonebot_plugin_bilibilibot/blob/main/docs/help.jpg?raw=true)
+![help](https://github.com/TDK1969/nonebot_plugin_bilibilibot/blob/main/docs/help2.jpg?raw=true)
 ## 视频更新推送
 ![videopush](https://github.com/TDK1969/nonebot_plugin_bilibilibot/blob/main/docs/updatepush.jpg?raw=true)
 ## 番剧更新推送
