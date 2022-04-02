@@ -17,7 +17,7 @@ header = {
     'User-Agent':'Mozilla/5.0 (Windows NT 6.1; rv2.0.1) Gecko/20100101 Firefox/4.0.1'
 }
 
-streamDir = './src/plugins/nonebot_plugin_bilibilibot/file/stream/'
+streamDir = f'{PackagePath}/file/stream/'
 
 def GetBiliStream(uid: str) -> Tuple[bool, str, str]:
     """
@@ -99,7 +99,7 @@ async def CheckBiliStream():
             if shouldUpdated:
                 f.seek(0)
                 f.truncate()
-                json.dump(info, f) 
+                json.dump(info, f, ensure_ascii=False) 
 
 def InitStreamerInfo(uid: str) -> Tuple[str, str]:
     """
@@ -119,7 +119,10 @@ def InitStreamerInfo(uid: str) -> Tuple[str, str]:
     response = json.loads(response.text)
     if response['code'] == 0:
         userName = response['data']['name']
-        roomURL = response['data']['live_room']['url']
+        if response['data']["live_room"]:
+            roomURL = response['data']['live_room']['url']
+        else:
+            roomURL = ""
         logger.info(f"获取到uid为{uid}的用户名为{userName}, 直播间链接为{roomURL}")
         return (userName, roomURL)
     else:
@@ -144,7 +147,6 @@ def GetUidByRoomNumber(roomNumber: str) -> Tuple[bool, str]:
     res = json.loads(res.text)
     if res['code'] == 0:
         uid = res['data']['uid']
-        logger.debug(f'{__PLUGIN_NAME}获取主播的uid为{uid}')
         return (True, str(uid))
     else:
         return (False, '')
@@ -164,13 +166,12 @@ async def FollowModifyStreamerFile(uid: str, userID: int, type: int) -> Tuple[bo
     if not uid.isdigit():
         logger.debug(f'{__PLUGIN_NAME}存在错误参数{uid}')
         return (False, uid + "(错误参数)")     
-    streamerFile = f"./src/plugins/nonebot_plugin_bilibilibot/file/stream/{uid}.json"
+    streamerFile = f"{PackagePath}/file/stream/{uid}.json"
     if os.path.exists(streamerFile):
         logger.debug(f"{__PLUGIN_NAME}主播{uid}文件已经存在")
         with open(streamerFile, "r+") as f:
             streamerInfo: List = json.load(f)
             # streamerInfo = [streamerName, isStreaming, roomURL, [privateFollowers], [groupFollowers]]
-            logger.debug(f"{__PLUGIN_NAME}正在读取用户{streamerInfo[0]}文件")
             if userID not in streamerInfo[3 + type]:
                 streamerInfo[3 + type].append(userID)
                 if type == 0:
@@ -180,7 +181,7 @@ async def FollowModifyStreamerFile(uid: str, userID: int, type: int) -> Tuple[bo
                     
                 f.seek(0)
                 f.truncate()
-                json.dump(streamerInfo, f)
+                json.dump(streamerInfo, f, ensure_ascii=False)
                 return (True, streamerInfo[0] + f"(uid: {uid})")
             else:
                 logger.debug(f"{__PLUGIN_NAME}用户/群{userID}已经关注了主播{streamerInfo[0]}")
@@ -200,13 +201,12 @@ async def FollowModifyStreamerFile(uid: str, userID: int, type: int) -> Tuple[bo
                 streamerInfo = [userName, False, roomURL, [], []]
                 streamerInfo[3 + type].append(userID)
                 with open(streamerFile, "w+") as f:
-                    json.dump(streamerInfo, f)
-                logger.debug(f"{__PLUGIN_NAME}已创建主播{userName}的文件")
+                    json.dump(streamerInfo, f, ensure_ascii=False)
                 logger.debug(f"{__PLUGIN_NAME}用户/群{userID}关注主播{streamerInfo[0]}成功")
                 return (True, streamerInfo[0] + f"(uid: {uid})")
             elif userName:
-                logger.debug(f'{__PLUGIN_NAME}主播{uid}无直播间')
-                return (False, uid + "(该用户无直播间)")
+                logger.debug(f'{__PLUGIN_NAME}主播{userName}未开通直播间')
+                return (False, uid + "(该用户未开通直播间)")
             else:
                 logger.debug(f'{__PLUGIN_NAME}主播{uid}不存在')
                 return (False, uid + "(非法uid)")
@@ -224,12 +224,11 @@ async def UnfollowModifyStreamerFile(uid: str, userID: int, type: int) -> Tuple[
         Tuple[bool, str]: [是否成功，主播名 | 失败原因]
     '''
     if uid.isdigit():
-        streamerFile = f"./src/plugins/nonebot_plugin_bilibilibot/file/stream/{uid}.json"
+        streamerFile = f"{PackagePath}/file/stream/{uid}.json"
         if os.path.exists(streamerFile):
             with open(streamerFile, "r+") as f:
                 streamerInfo: List = json.load(f)
                 # streamerInfo = [streamerName, isStreaming, roomURL, [privateFollowers], [groupFollowers]]
-                logger.debug(f"{__PLUGIN_NAME}正在读取用户{streamerInfo[0]}文件")
                 if userID not in streamerInfo[3 + type]:
                     logger.debug(f'{__PLUGIN_NAME}用户{userID}未关注主播{uid}')
                     return (False, uid + "(未关注)")
@@ -238,7 +237,7 @@ async def UnfollowModifyStreamerFile(uid: str, userID: int, type: int) -> Tuple[
                     if streamerInfo[3] and streamerInfo[4]:
                         f.seek(0)
                         f.truncate()
-                        json.dump(streamerInfo, f)
+                        json.dump(streamerInfo, f, ensure_ascii=False)
                     else:
                         logger.debug(f'{__PLUGIN_NAME}主播{streamerInfo[0]}已无人关注，将文件删除')
                         os.remove(streamerFile)
@@ -268,7 +267,7 @@ async def FollowStreamers(
     Returns:
         List[List[str]]: [[关注成功], [关注失败]]
     '''
-    userFile = f"./src/plugins/nonebot_plugin_bilibilibot/file/{'user' if userType == 0 else 'group'}/{id}.json"
+    userFile = f"{PackagePath}/file/{'user' if userType == 0 else 'group'}/{id}.json"
     successList = []
     failList = []
 
@@ -311,12 +310,12 @@ async def UnfollowStreamers(
     Returns:
         List[List[str]]: [成功列表，失败列表]
     '''
-    userFile = f"./src/plugins/nonebot_plugin_bilibilibot/file/{'user' if type == 0 else 'group'}/{id}.json"
+    userFile = f"{PackagePath}/file/{'user' if type == 0 else 'group'}/{id}.json"
     successList = []
     failList = []
 
     for uid in uidList:
-        isSuccess, s = await UnfollowModifyStreamerFile(uid, id)
+        isSuccess, s = await UnfollowModifyStreamerFile(uid, id, type)
         if isSuccess:
             successList.append(s)
         else:

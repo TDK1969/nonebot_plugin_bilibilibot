@@ -1,36 +1,39 @@
 命令列表:
+
 获取帮助
 > /help
 > /帮助
 
 关注主播
-> /followStreamer uid
 > /关注主播 uid
-> 从B站app转发直播间
+> 从B站app转发直播间(群不适用)
 
 取关主播
 > /unfollowStreamer uid
 > /切割主播 uid
 
 关注up主
-> /followUp uid
 > /关注up
-> 从B站app转发个人空间
+> 从B站app转发个人空间(群不适用)
 
 取关up主
-> /unfollowUp uid
 > /取关up主 uid
 
-关注影视/番剧
-> /followTelegram epid
-> /关注影视 epid
-> 从B站app转发播放页面(推荐)
+关注番剧
+> /关注番剧 epid
+> 从B站app转发播放页面(推荐)(群不适用)
+(epid: 番剧播放界面网址，例如https://www.bilibili.com/bangumi/play/ep468705中，以ep开头的字符串)
 
-取关影视/番剧
-> /unfollowTelegram epid
-> /取关影视 epid
+
+取关番剧
+> /取关番剧 seasonid
+(seasonid: 与epid不同，请通过/查询关注 命令查看番剧的seasonid)
 
 查询关注
-> /listFollowing
 > /查询关注
 > /查询成分
+
+About
+> 项目主页: https://github.com/TDK1969/nonebot_plugin_bilibilibot
+> 邮箱: tdk1969@foxmail.com
+> 出现问题请在github开issue或联系邮箱

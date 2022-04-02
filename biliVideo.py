@@ -15,7 +15,7 @@ biliUserInfoUrl = 'https://api.bilibili.com/x/space/acc/info?mid={}&jsonp=jsonp'
 header = {
     'User-Agent':'Mozilla/5.0 (Windows NT 6.1; rv2.0.1) Gecko/20100101 Firefox/4.0.1'
 }
-videoDir = "./src/plugins/nonebot_plugin_bilibilibot/file/up/"
+videoDir = f"{PackagePath}/file/up/"
 
 # 视频
 def GetLatestVideo(uid: str, lastPostTime: int) -> Tuple[bool, str, str, int, str]:
@@ -36,9 +36,9 @@ def GetLatestVideo(uid: str, lastPostTime: int) -> Tuple[bool, str, str, int, st
     assert response.status_code == 200, '获取视频列表时连接出错, status_code = {}'.format(response.status_code)
 
     response = json.loads(response.text)
-    assert len(response['data']['list']['vlist']) != 0, '用户{}无发布视频'.format(uid)
+    #assert len(response['data']['list']['vlist']) != 0, '用户{}无发布视频'.format(uid)
     latestVideo = response['data']['list']['vlist'][0] if len(response['data']['list']['vlist']) != 0 else 0
-    postTime = int(latestVideo['created'])
+    postTime = int(latestVideo['created']) if len(response['data']['list']['vlist']) else 0
     
     if postTime > lastPostTime:
         # 发现新视频
@@ -76,7 +76,7 @@ async def CheckUpUpdate():
                 res[4]: 封面链接
                 """
                 if res[0]:
-                    logger.debug(f'{__PLUGIN_NAME}检测到up主{info[0]}更新了视频')
+                    logger.info(f'{__PLUGIN_NAME}检测到up主{info[0]}更新了视频')
                     textMsg = "【B站动态】\n <{}> 更新了视频\n标题: {}\n链接: https://www.bilibili.com/video/{}".format(info[0], res[2], res[1])
                     
                     for follower in info[2]:
@@ -89,12 +89,11 @@ async def CheckUpUpdate():
                     info[1] = res[3]
                     f.seek(0)
                     f.truncate()
-                    json.dump(info, f)
+                    json.dump(info, f, ensure_ascii=False)
 
             except Exception as e:
                 ex_type, ex_val, _ = sys.exc_info()
                 exceptionMsg = '【错误报告】\n检测用户{}B站视频时发生错误\n错误类型: {}\n错误值: {}\n'.format(info[0], ex_type, ex_val)
-                await schedBot.send_msg(message=exceptionMsg, user_id="793065367")
                 logger.error(f"{__PLUGIN_NAME}" + exceptionMsg + traceback.format_exc())
 
 
@@ -139,7 +138,7 @@ async def FollowModifyUpFile(uid: str, userID: int, type: int) -> Tuple[bool, st
     '''
     
     if uid.isdigit():
-        upFile = f"./src/plugins/nonebot_plugin_bilibilibot/file/up/{uid}.json"
+        upFile = f"{PackagePath}/file/up/{uid}.json"
         if os.path.exists(upFile):
             logger.debug(f"{__PLUGIN_NAME}up主文件{upFile}已经存在")
 
@@ -152,7 +151,7 @@ async def FollowModifyUpFile(uid: str, userID: int, type: int) -> Tuple[bool, st
                     logger.debug(f"{__PLUGIN_NAME}用户/群{userID}关注up主{upInfo[0]}成功")
                     f.seek(0)
                     f.truncate()
-                    json.dump(upInfo, f)
+                    json.dump(upInfo, f, ensure_ascii=False)
                     return (True, upInfo[0] + f"(uid: {uid})")
                 else:
                     logger.debug(f"{__PLUGIN_NAME}用户{userID}已经关注了up{upInfo[0]}")
@@ -173,7 +172,7 @@ async def FollowModifyUpFile(uid: str, userID: int, type: int) -> Tuple[bool, st
                     upInfo[2 + type].append(userID)
 
                     with open(upFile, "w+") as f:
-                        json.dump(upInfo, f)
+                        json.dump(upInfo, f, ensure_ascii=False)
                     
                     logger.debug(f"{__PLUGIN_NAME}已创建up主{userName}的文件")
                     logger.debug(f"{__PLUGIN_NAME}用户{userID}关注up{upInfo[0]}成功")
@@ -197,7 +196,7 @@ async def UnfollowModifyUpFile(uid: str, userID: int, type: int) -> Tuple[bool, 
     '''
     
     if uid.isdigit():
-        upFile = f"./src/plugins/nonebot_plugin_bilibilibot/file/up/{uid}.json"
+        upFile = f"{PackagePath}/file/up/{uid}.json"
         if os.path.exists(upFile):
             with open(upFile, "r+") as f:
                 upInfo: List = json.load(f)
@@ -211,7 +210,7 @@ async def UnfollowModifyUpFile(uid: str, userID: int, type: int) -> Tuple[bool, 
                     if upInfo[2] and upInfo[3]:
                         f.seek(0)
                         f.truncate()
-                        json.dump(upInfo, f)
+                        json.dump(upInfo, f, ensure_ascii=False)
                     else:
                         logger.debug(f'{__PLUGIN_NAME}up主{upInfo[0]}已无人关注，将文件删除')
                         os.remove(upFile)
@@ -241,7 +240,7 @@ async def FollowUp(
     Returns:
         List[List[str]]: [是否成功，信息]
     '''
-    userFile = f"./src/plugins/nonebot_plugin_bilibilibot/file/{'user' if type == 0 else 'group'}/{id}.json"
+    userFile = f"{PackagePath}/file/{'user' if type == 0 else 'group'}/{id}.json"
     successList = []
     failList = []
 
@@ -284,7 +283,7 @@ async def UnfollowUp(
     Returns:
         List[List[str]]: [是否成功，信息]
     '''
-    userFile = f"./src/plugins/nonebot_plugin_bilibilibot/file/{'user' if type == 0 else 'group'}/{id}.json"
+    userFile = f"{PackagePath}/file/{'user' if type == 0 else 'group'}/{id}.json"
     successList = []
     failList = []
 

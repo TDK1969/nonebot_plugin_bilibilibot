@@ -5,7 +5,9 @@ import requests
 import os
 from nonebot import get_bot
 from nonebot.log import logger
+from os.path import abspath, dirname
 
+PackagePath =  dirname(abspath(__file__))
 
 __PLUGIN_NAME = "[B站整合~基础]"
 
@@ -22,7 +24,7 @@ async def createUserFile(userFile: str, nickName: str, streamers: List[str]=[], 
     
     with open(userFile, 'w+') as f:
             userInfo = [nickName, streamers, ups, telegrams]
-            json.dump(userInfo, f)
+            json.dump(userInfo, f, ensure_ascii=False)
     logger.debug(f'{__PLUGIN_NAME}用户文件{userFile}创建成功')
 
 async def FollowModifyUserFile(userFile: str, successList: List[str], type: int):
@@ -39,14 +41,13 @@ async def FollowModifyUserFile(userFile: str, successList: List[str], type: int)
     无返回值
     -------
     """
-    logger.debug(f'{__PLUGIN_NAME}正在打开用户文件{userFile}')
     with open(userFile, "r+") as f:
         userInfo = json.load(f)
         userInfo[type] += successList
         # [nickname, [streamer], [up], [telegrams]]
         f.seek(0)
         f.truncate()
-        json.dump(userInfo, f)
+        json.dump(userInfo, f, ensure_ascii=False)
         logger.debug(f'{__PLUGIN_NAME}用户{userInfo[0]}文件更新成功')
 
 async def UnfollowModifyUserFile(userFile: str, successList: List[str], type: int):
@@ -63,15 +64,13 @@ async def UnfollowModifyUserFile(userFile: str, successList: List[str], type: in
     无返回值
     -------
     """
-    logger.debug(f'{__PLUGIN_NAME}正在打开用户文件{userFile}')
     with open(userFile, "r+") as f:
         userInfo = json.load(f)
         userInfo[type] = list(set(userInfo[type]) - set(successList))
             # [nickname, [streamer], [up], [telegrams]]
         f.seek(0)
         f.truncate()
-        json.dump(userInfo, f)
-        logger.debug(f'{__PLUGIN_NAME}用户文件更新成功, type = {type}')
+        json.dump(userInfo, f, ensure_ascii=False)
 
 def parseB23Url(url: str) -> Tuple[bool, int, str]:
     """
@@ -86,10 +85,7 @@ def parseB23Url(url: str) -> Tuple[bool, int, str]:
     [isSuccess, type, id]
     type: 1-直播房间号;2-up主uid;3-节目的epid
     -------
-    """
-    
-    logger.debug(f'{__PLUGIN_NAME}对短链接{url}进行转换')
-    
+    """ 
     API = 'https://duanwangzhihuanyuan.bmcx.com/web_system/bmcx_com_www/system/file/duanwangzhihuanyuan/get/?ajaxtimestamp=1646565831920'
     payload = {'turl': url}
     res = requests.post(url=API, data=payload)
@@ -126,7 +122,7 @@ def GetAllUser() -> List[str]:
     -------
     """
     
-    users = os.listdir('./src/plugins/nonebot_plugin_bilibilibot/file/user')
+    users = os.listdir(f'{PackagePath}/file/user')
     result = []
     for user in users:
         userID = user.split('.')[0]
@@ -146,7 +142,7 @@ def GetAllGroup() -> List[str]:
     -------
     """
     
-    users = os.listdir('./src/plugins/nonebot_plugin_bilibilibot/file/group')
+    users = os.listdir(f'{PackagePath}/file/group')
     result = []
     for user in users:
         userID = user.split('.')[0]
@@ -195,8 +191,8 @@ def CheckDir():
     
     -------
     """
-    logger.debug(f'{__PLUGIN_NAME}检测相关文件目录是否存在')
-    baseDir = './src/plugins/nonebot_plugin_bilibilibot/file/'
+    
+    baseDir = f'{PackagePath}/file/'
 
     if not os.path.exists(baseDir + 'source'):
         logger.debug(f'{__PLUGIN_NAME}source文件夹不存在')

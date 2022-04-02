@@ -14,7 +14,7 @@ __PLUGIN_NAME = "B站整合~影视/番剧"
 biliTeleInfoUrl = 'https://api.bilibili.com/pgc/web/season/section?season_id={}'
 getSeasonIDAPI = 'https://api.bilibili.com/pgc/view/web/season?ep_id={}'
 getEpisodesAPI = 'https://api.bilibili.com/pgc/web/season/section?season_id={}'
-telegramDir = './src/plugins/nonebot_plugin_bilibilibot/file/telegram/'
+telegramDir = f'{PackagePath}/file/telegram/'
 
 header = {
     'User-Agent':'Mozilla/5.0 (Windows NT 6.1; rv2.0.1) Gecko/20100101 Firefox/4.0.1'
@@ -110,7 +110,7 @@ async def CheckTeleUpdate():
             try:
                 res = GetTelegramInfo(epID, info[1])
                 if res[0]:
-                    logger.debug(f'{__PLUGIN_NAME}检测到影视剧{info[0]}更新')
+                    logger.info(f'{__PLUGIN_NAME}检测到影视剧{info[0]}更新')
                     
                     shouldUpdated = True
                     info[1] = res[1]
@@ -118,7 +118,7 @@ async def CheckTeleUpdate():
                         info[0], res[1], res[2], res[3]
                     )
                     coverMsg = MessageSegment.image(res[4])
-                    logger.debug(f'{__PLUGIN_NAME}向关注用户发送更新通知')
+                    logger.info(f'{__PLUGIN_NAME}向关注用户发送更新通知')
                     
                     for follower in info[2]:
                         await schedBot.send_msg(message=textMsg + coverMsg, user_id=follower)
@@ -134,7 +134,7 @@ async def CheckTeleUpdate():
                 if shouldUpdated:
                     f.seek(0)
                     f.truncate()
-                    json.dump(info, f)
+                    json.dump(info, f, ensure_ascii=False)
                     logger.info(f"[{__PLUGIN_NAME}]文件FollowTelegramFile已更新！")
 
 async def FollowModifyTelegramFile(epID: str, userID: int, type: int) -> Tuple[bool, str]:
@@ -161,7 +161,7 @@ async def FollowModifyTelegramFile(epID: str, userID: int, type: int) -> Tuple[b
         return (False, epID + "(网络错误)")
     else:
         if res[0]:
-            telegramFile = f"./src/plugins/nonebot_plugin_bilibilibot/file/telegram/{res[1]}.json"
+            telegramFile = f"{PackagePath}/file/telegram/{res[1]}.json"
             if os.path.exists(telegramFile):
                 logger.debug(f'{__PLUGIN_NAME}节目{res[2]}文件已经存在')
                 with open(telegramFile) as f:
@@ -174,7 +174,7 @@ async def FollowModifyTelegramFile(epID: str, userID: int, type: int) -> Tuple[b
                         logger.debug(f'{__PLUGIN_NAME}用户{userID}关注节目{res[2]}成功')
                         f.seek(0)
                         f.truncate()
-                        json.dump(telegramFile, f)
+                        json.dump(telegramFile, f, ensure_ascii=False)
                         return (True, res[2] + f"(seasonID: {res[1]})")
                     else:
                         logger.debug(f'{__PLUGIN_NAME}用户{userID}已关注节目{res[2]}')
@@ -209,7 +209,7 @@ async def UnfollowModifyTelegramFile(seasonID: str, userID: int, type: int) -> T
     if not seasonID.isdigit():
         return (False, seasonID + "(错误参数)")
     
-    telegramFile = f"./src/plugins/nonebot_plugin_bilibilibot/file/telegram/{seasonID}.json"
+    telegramFile = f"{PackagePath}/file/telegram/{seasonID}.json"
     if os.path.exists(telegramFile):
         with open(telegramFile, "r+") as f:
             telegramInfo: List = json.load(f)
@@ -223,7 +223,7 @@ async def UnfollowModifyTelegramFile(seasonID: str, userID: int, type: int) -> T
                 if telegramInfo[2] and telegramInfo[3]:
                     f.seek(0)
                     f.truncate()
-                    json.dump(telegramInfo, f)
+                    json.dump(telegramInfo, f, ensure_ascii=False)
                 else:
                     logger.debug(f'{__PLUGIN_NAME}节目{telegramInfo[0]}已经无人关注，将文件删除')
                     os.remove(telegramFile)
@@ -251,7 +251,7 @@ async def FollowTelegram(
     Returns:
         List[List[str]]: [是否成功，信息]
     '''
-    userFile = f"./src/plugins/nonebot_plugin_bilibilibot/file/{'user' if type == 0 else 'group'}/{id}.json"
+    userFile = f"{PackagePath}/file/{'user' if type == 0 else 'group'}/{id}.json"
     successList = []
     failList = []
 
@@ -296,7 +296,7 @@ async def UnfollowTelegram(
     Returns:
         List[List[str]]: [是否成功，信息]
     '''
-    userFile = f"./src/plugins/nonebot_plugin_bilibilibot/file/{'user' if type == 0 else 'group'}/{id}.json"
+    userFile = f"{PackagePath}/file/{'user' if type == 0 else 'group'}/{id}.json"
     successList = []
     failList = []
 
