@@ -1,13 +1,14 @@
 import requests
 import json
-from typing import Tuple, List
+from typing import Tuple, List, Union
 import sys
 import os
 import traceback
 import nonebot
 from nonebot.log import logger
 from nonebot.adapters.onebot.v11 import MessageSegment
-
+from nonebot.adapters.onebot.v11.event import GroupMessageEvent, PrivateMessageEvent
+from .basicFunc import *
 __PLUGIN_NAME = "B站整合~视频"
 baseUrl = 'https://api.bilibili.com/x/space/arc/search?mid={}&ps=30&tid=0&pn=1&keyword=&order=pubdate&jsonp=jsonp'
 biliUserInfoUrl = 'https://api.bilibili.com/x/space/acc/info?mid={}&jsonp=jsonp'
@@ -77,9 +78,14 @@ async def CheckUpUpdate():
                 if res[0]:
                     logger.debug(f'{__PLUGIN_NAME}检测到up主{info[0]}更新了视频')
                     textMsg = "【B站动态】\n <{}> 更新了视频\n标题: {}\n链接: https://www.bilibili.com/video/{}".format(info[0], res[2], res[1])
+                    
                     for follower in info[2]:
                         logger.debug(f'{__PLUGIN_NAME}向用户{follower}发送更新通知')
                         await schedBot.send_msg(message=textMsg + MessageSegment.image(res[4]), user_id=follower)
+                    
+                    for group in info[3]:
+                        await schedBot.send_msg(message=textMsg + MessageSegment.image(res[4]), group_id=group)
+                    
                     info[1] = res[3]
                     f.seek(0)
                     f.truncate()
@@ -120,31 +126,30 @@ def InitUpInfo(uid: str) -> Tuple[str, int]:
     else:
         return ('', '')
 
-async def FollowModifyUpFile(uid: str, userID: str) -> Tuple[bool, str]:
-    """
-    @description  :
-    根据用户关注up，修改up文件
-    ---------
-    @param  :
-    uid: up的uid
-    userID: 用户的qq号
-    -------
-    @Returns  :
-    返回一个元组
-    [isSuccessful, userName(uid) | uid(reason)]
-    -------
-    """
+async def FollowModifyUpFile(uid: str, userID: int, type: int) -> Tuple[bool, str]:
+    '''根据用户或群关注up，修改up文件
+
+    Args:
+        uid (str): up的uid
+        userID (int): 用户的qq或群号
+        type (int): 0-个人用户，1-群
+
+    Returns:
+        Tuple[bool, str]: [是否成功，信息]
+    '''
+    
     if uid.isdigit():
         upFile = f"./src/plugins/nonebot_plugin_bilibilibot/file/up/{uid}.json"
         if os.path.exists(upFile):
             logger.debug(f"{__PLUGIN_NAME}up主文件{upFile}已经存在")
+
             with open(upFile, "r+") as f:
                 upInfo: List = json.load(f)
-                # upInfo = [upName, latestVideoTimeStamp, [followers]]
+                # upInfo = [upName, latestVideoTimeStamp, [userFollowers], [groupFollowers]]
                 logger.debug(f"{__PLUGIN_NAME}正在读取up主{upInfo[0]}文件")
-                if userID not in upInfo[2]:
-                    upInfo[2].append(userID)
-                    logger.debug(f"{__PLUGIN_NAME}用户{userID}关注up主{upInfo[0]}成功")
+                if userID not in upInfo[2 + type]:
+                    upInfo[2 + type].append(userID)
+                    logger.debug(f"{__PLUGIN_NAME}用户/群{userID}关注up主{upInfo[0]}成功")
                     f.seek(0)
                     f.truncate()
                     json.dump(upInfo, f)
@@ -164,9 +169,12 @@ async def FollowModifyUpFile(uid: str, userID: str) -> Tuple[bool, str]:
                 return (False, uid + "(网络连接错误)")
             else:
                 if userName:
-                    upInfo = [userName, latestTimeStamp, [userID]]
+                    upInfo = [userName, latestTimeStamp, [], []]
+                    upInfo[2 + type].append(userID)
+
                     with open(upFile, "w+") as f:
                         json.dump(upInfo, f)
+                    
                     logger.debug(f"{__PLUGIN_NAME}已创建up主{userName}的文件")
                     logger.debug(f"{__PLUGIN_NAME}用户{userID}关注up{upInfo[0]}成功")
                     return (True, upInfo[0] + f"(uid: {uid})")
@@ -176,33 +184,31 @@ async def FollowModifyUpFile(uid: str, userID: str) -> Tuple[bool, str]:
     else:
         return (False, uid + "(错误参数)")
 
-async def UnfollowModifyUpFile(uid: str, userID: str) -> Tuple[bool, str]:
-    """
-    @description  :
-    根据用户取关up，修改up主文件
-    ---------
-    @param  :
-    uid: up的uid
-    userID: 用户的qq号
-    -------
-    @Returns  :
-    返回一个元组
-    [isSuccessful, userName | uid(reason)]
-    -------
-    """
+async def UnfollowModifyUpFile(uid: str, userID: int, type: int) -> Tuple[bool, str]:
+    '''根据个人用户或群取关up主，修改up文件
+
+    Args:
+        uid (str): up的uid
+        userID (int): 用户的qq号/群号
+        type (int): 0-个人用户，1-群
+
+    Returns:
+        Tuple[bool, str]: [是否成功，信息]
+    '''
+    
     if uid.isdigit():
         upFile = f"./src/plugins/nonebot_plugin_bilibilibot/file/up/{uid}.json"
         if os.path.exists(upFile):
             with open(upFile, "r+") as f:
                 upInfo: List = json.load(f)
-                # upInfo = [upName, latestVideoTimeStamp, [followers]]
+                # upInfo = [upName, latestVideoTimeStamp, [userFollowers], [groupFollowers]]
                 logger.debug(f"{__PLUGIN_NAME}正在读取用户{upInfo[0]}文件")
-                if userID not in upInfo[2]:
+                if userID not in upInfo[2 + type]:
                     logger.debug(f'{__PLUGIN_NAME}用户{userID}未关注up主{uid}')
                     return (False, uid + "(未关注)")
                 else:
-                    upInfo[2].remove(userID)
-                    if upInfo[2]:
+                    upInfo[2 + type].remove(userID)
+                    if upInfo[2] and upInfo[3]:
                         f.seek(0)
                         f.truncate()
                         json.dump(upInfo, f)
@@ -217,3 +223,89 @@ async def UnfollowModifyUpFile(uid: str, userID: str) -> Tuple[bool, str]:
             return (False, uid + "(未关注)")
     else:
         return (False, uid + "(错误参数)")
+
+async def FollowUp(
+    event: Union[PrivateMessageEvent, GroupMessageEvent], 
+    id: int, 
+    uidList: List[str],
+    type: int
+    ) -> List[List[str]]:
+    '''个人用户/群关注up主
+
+    Args:
+        event (Union[PrivateMessageEvent, GroupMessageEvent]): 消息事件
+        id (int): qq号/群号
+        uidList (List[str]): up主的uid
+        type (int): 0-个人用户，1-群        
+
+    Returns:
+        List[List[str]]: [是否成功，信息]
+    '''
+    userFile = f"./src/plugins/nonebot_plugin_bilibilibot/file/{'user' if type == 0 else 'group'}/{id}.json"
+    successList = []
+    failList = []
+
+    for uid in uidList:
+        isSuccess, s = await FollowModifyUpFile(uid, id, type)
+        if isSuccess:
+            successList.append(s)
+        else:
+            failList.append(s)
+
+    if os.path.exists(userFile):
+        await FollowModifyUserFile(userFile, successList, 2)
+    else:
+        logger.debug(f'{__PLUGIN_NAME}用户文件{userFile}不存在, 准备创建')
+        name = event.sender.nickname
+
+        if type == 1:
+            bot = get_bot()
+            groupInfo = await bot.get_group_info(group_id=id)
+            name = groupInfo["group_name"]
+
+        await createUserFile(userFile, name, ups=successList)
+    
+    return [successList, failList]
+
+async def UnfollowUp(
+    event: Union[PrivateMessageEvent, GroupMessageEvent], 
+    id: int, 
+    uidList: List[str],
+    type: int
+    ) -> List[List[str]]:
+    '''个人用户/群取关up主
+
+    Args:
+        event (Union[PrivateMessageEvent, GroupMessageEvent]): 消息事件
+        id (int): qq号/群号
+        uidList (List[str]): 取关的up主
+        type (int): 0-个人用户，1-群
+
+    Returns:
+        List[List[str]]: [是否成功，信息]
+    '''
+    userFile = f"./src/plugins/nonebot_plugin_bilibilibot/file/{'user' if type == 0 else 'group'}/{id}.json"
+    successList = []
+    failList = []
+
+    for uid in uidList:
+        isSuccess, s = await UnfollowModifyUpFile(uid, id, type)
+        if isSuccess:
+            successList.append(s)
+        else:
+            failList.append(s)
+    
+    if os.path.exists(userFile):
+        await UnfollowModifyUserFile(userFile, successList, 2)
+    else:
+        logger.debug(f'{__PLUGIN_NAME}用户文件{userFile}不存在, 准备创建')
+        name = event.sender.nickname
+
+        if type == 1:
+            bot = get_bot()
+            groupInfo = await bot.get_group_info(group_id=id)
+            name = groupInfo["group_name"]
+        
+        await createUserFile(userFile, name)
+
+    return [successList, failList]

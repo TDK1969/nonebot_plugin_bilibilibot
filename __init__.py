@@ -2,6 +2,7 @@ from nonebot import get_driver, on_command, on_message, require, permission, get
 from nonebot.rule import to_me
 from nonebot.log import logger
 from nonebot.rule import to_me, regex
+
 from nonebot.matcher import Matcher
 from nonebot.adapters.onebot.v11 import Message, MessageSegment, MessageEvent
 from nonebot.adapters.onebot.v11.permission import GROUP_ADMIN, GROUP_OWNER, PRIVATE_FRIEND, GROUP_MEMBER
@@ -31,38 +32,21 @@ __PLUGIN_NAME_STREAM = "[B站整合~直播]"
 __PLUGIN_NAME_VIDEO = "[B站整合~视频]"
 __PLUGIN_NAME_TELE = "[B站整合~影视]"
 
-testCommand = on_command("群测试", permission=GROUP_ADMIN or GROUP_OWNER or GROUP_MEMBER)
-@testCommand.handle()
-async def testHandler(event: GroupMessageEvent, args: Message = CommandArg()):
-    groupID = event.group_id
-    logger.debug(f'{__PLUGIN_NAME}接收到来自群{groupID}的消息')
-    bot = get_bot()
-    
-    #await bot.send_group_msg(message = f"收到来自群{groupID}, 用户{event.get_user_id()}的消息", group_id=groupID)
-    await bot.call_api("send_group_msg", group_id=groupID, message=f'收到来自群{groupID}, 用户{event.get_user_id()}的消息')
-    #await bot.send_msg(message_type = "group", message = f"收到来自群{groupID}, 用户{event.get_user_id()}的消息", group_id=groupID)
-    await testCommand.finish()
-    
-
-userFollowStreamerCommand = on_command("followStreamer", rule=privateMessageRule, aliases={"关注主播"}, block=True, permission=PRIVATE_FRIEND)
-@userFollowStreamerCommand.handle()
-async def userFollowStreamerCommandHandler(Matcher, event: PrivateMessageEvent, args: Message = CommandArg()):
-    '''响应关注主播命令, 将主播加入用户的关注主播列表（如果无文件则建立），将用户加入主播的列表
-    可同时关注多个主播
-
-    Args:
-        event (GroupMessageEvent): 消息事件     
-        args (Message, optional): 命令参数. Defaults to CommandArg().
-    '''
-    
+followStreamerCommand = on_command("关注主播", permission=GROUP_ADMIN | GROUP_OWNER | PRIVATE_FRIEND)
+@followStreamerCommand.handle()
+async def followStreamerCommandHandler(event: Union[PrivateMessageEvent, GroupMessageEvent], args: Message = CommandArg()):
     uidList = args.extract_plain_text().split()
-    successList, failList = followStreamers(event, event.sender.user_id, uidList, 0)
-    await userFollowStreamerCommand.finish(f"关注成功:\n{successList}\n关注失败:\n{failList}")
+    if isinstance(event, PrivateMessageEvent):
+        successList, failList = await FollowStreamers(event, event.sender.user_id, uidList, 0)
+    if isinstance(event, GroupMessageEvent):
+        successList, failList = await FollowStreamers(event, event.group_id, uidList, 1)
+    await followStreamerCommand.finish(f"关注成功:\n{successList}\n关注失败:\n{failList}")
 
-userFollowStreamer = on_message(rule=privateMessageRule & regex("^关注主播([ ]+[\d]+)+"), permission=PRIVATE_FRIEND, block=True)
+"""
+userFollowStreamer = on_message(rule=privateMessageRule & regex("^关注主播([ ]+[\d]+)+"), permission=PRIVATE_FRIEND)
 @userFollowStreamer.handle()
-async def userFollowStreamerHandler(event: PrivateMessageEvent, args: Message = CommandArg()):
-    '''响应关注主播信息, 将主播加入用户的关注主播列表（如果无文件则建立），将用户加入主播的列表
+async def userFollowStreamerHandler(event: PrivateMessageEvent):
+    '''响应个人关注主播信息, 将主播加入用户的关注主播列表（如果无文件则建立），将用户加入主播的列表
     可同时关注多个主播
 
     Args:
@@ -70,44 +54,34 @@ async def userFollowStreamerHandler(event: PrivateMessageEvent, args: Message = 
         args (Message, optional): 命令参数. Defaults to CommandArg().
     '''
     
-    uidList = args.extract_plain_text().split()
-    successList, failList = followStreamers(event, event.sender.user_id, uidList, 0)
+    uidList = event.get_message().extract_plain_text().split(' ')[1:]
+    successList, failList =  await FollowStreamers(event, event.sender.user_id, uidList, 0)
     await userFollowStreamer.finish(f"关注成功:\n{successList}\n关注失败:\n{failList}")
 
-groupFollowStreamerCommand = on_command("followStreamer", rule=groupMessageRule, aliases={"关注主播"}, block=True, permission=GROUP_ADMIN or GROUP_OWNER)
-@groupFollowStreamerCommand.handle()
-async def groupFollowStreamerCommandHandler(event: GroupMessageEvent, args: Message = CommandArg()):
-    '''响应关注主播命令, 将主播加入群的关注主播列表（如果无文件则建立），将群加入主播的列表
-    可同时关注多个主播
-
-    Args:
-        event (GroupMessageEvent): 消息事件     
-        args (Message, optional): 命令参数. Defaults to CommandArg().
-    '''
-    
-    uidList = args.extract_plain_text().split()
-    successList, failList = followStreamers(event, event.group_id, uidList, 1)
-    await groupFollowStreamer.finish(f"关注成功:\n{successList}\n关注失败:\n{failList}")
-
-groupFollowStreamer = on_message(rule=groupMessageRule & regex("^关注主播([ ]+[\d]+)+"), permission=GROUP_ADMIN | GROUP_OWNER, block=True)
+groupFollowStreamer = on_message(rule=groupMessageRule & regex("^关注主播([ ]+[\d]+)+"), permission=GROUP_ADMIN | GROUP_OWNER)
 @groupFollowStreamer.handle()
-async def groupFollowStreamerHandler(event: GroupMessageEvent, args: Message = CommandArg()):
-    '''响应关注主播信息, 将主播加入群的关注主播列表（如果无文件则建立），将群加入主播的列表
+async def groupFollowStreamerHandler(event: GroupMessageEvent):
+    '''响应群关注主播信息, 将主播加入群的关注主播列表（如果无文件则建立），将群加入主播的列表
     可同时关注多个主播
 
     Args:
         event (GroupMessageEvent): 消息事件     
         args (Message, optional): 命令参数. Defaults to CommandArg().
     '''
+    logger.debug(f'{__PLUGIN_NAME}收到消息{event.get_message}')
     
-    uidList = args.extract_plain_text().split()
-    successList, failList = followStreamers(event, event.group_id, uidList, 1)
-    await groupFollowStreamerCommand.finish(f"关注成功:\n{successList}\n关注失败:\n{failList}")
+    uidList = event.get_message().extract_plain_text().split(' ')[1:]
+    logger.debug(f'{__PLUGIN_NAME}uidList = {uidList}')
+    
+    #uidList = event.get_message().extract_plain_text().split(' ')[1:]
+    successList, failList = await FollowStreamers(event, event.group_id, uidList, 1)
+    await groupFollowStreamer.finish(f"关注成功:\n{successList}\n关注失败:\n{failList}")
+"""
 
-userUnfollowStreamerCommand = on_command("userUnfollowStreamerCommand", rule=privateMessageRule, aliases={"切割主播"}, block=True, permission=PRIVATE_FRIEND)
-@userUnfollowStreamerCommand.handle()
-async def userUnfollowStreamerCommandHandler(event: PrivateMessageEvent, args: Message = CommandArg()):
-    '''响应取关主播命令，从用户的关注主播列表中移除取关主播，同时主播的关注列表中去除用户
+userUnfollowStreamer = on_message(rule=privateMessageRule & regex("^取关主播([ ]+[\d]+)+"), permission=PRIVATE_FRIEND)
+@userUnfollowStreamer.handle()
+async def userUnfollowStreamerHandler(event: PrivateMessageEvent):
+    '''响应个人取关主播命令，从用户的关注主播列表中移除取关主播，同时主播的关注列表中去除用户
     可以同时取关多个主播
 
     Args:
@@ -116,14 +90,14 @@ async def userUnfollowStreamerCommandHandler(event: PrivateMessageEvent, args: M
         args (Message, optional): 命令参数. Defaults to CommandArg().
     '''
     
-    uidList = args.extract_plain_text().split()
-    successList, failList = unfollowStreamers(event, event.sender.user_id, uidList, 0)
-    await userUnfollowStreamerCommand.finish(f"关注成功:\n{successList}\n关注失败:\n{failList}")
+    uidList = event.get_message().extract_plain_text().split(' ')[1:]
+    successList, failList = await UnfollowStreamers(event, event.sender.user_id, uidList, 0)
+    await userUnfollowStreamer.finish(f"关注成功:\n{successList}\n关注失败:\n{failList}")
 
-groupUnfollowStreamerCommand = on_command("groupUnfollowStreamerCommand", rule=groupMessageRule, aliases={"切割主播"}, block=True, permission=GROUP_ADMIN or GROUP_OWNER)
-@groupUnfollowStreamerCommand.handle()
-async def groupUnfollowStreamerCommandHandler(event: GroupMessageEvent, args: Message = CommandArg()):
-    '''响应取关主播命令，从群的关注主播列表中移除取关主播，同时主播的关注列表中去除群
+groupUnfollowStreamer = on_message(rule=groupMessageRule & regex("^取关主播([ ]+[\d]+)+"), permission=GROUP_ADMIN | GROUP_OWNER)
+@groupUnfollowStreamer.handle()
+async def groupUnfollowStreamerHandler(event: GroupMessageEvent):
+    '''响应取关群主播消息，从群的关注主播列表中移除取关主播，同时主播的关注列表中去除群
     可以同时取关多个主播
 
     Args:
@@ -132,37 +106,32 @@ async def groupUnfollowStreamerCommandHandler(event: GroupMessageEvent, args: Me
         args (Message, optional): 命令参数. Defaults to CommandArg().
     '''
     
-    uidList = args.extract_plain_text().split()
-    successList, failList = unfollowStreamers(event, event.group_id, uidList, 1)
-    await groupUnfollowStreamerCommand.finish(f"关注成功:\n{successList}\n关注失败:\n{failList}")
+    uidList = event.get_message().extract_plain_text().split(' ')[1:]
+    successList, failList = await UnfollowStreamers(event, event.group_id, uidList, 1)
+    await groupUnfollowStreamer.finish(f"关注成功:\n{successList}\n关注失败:\n{failList}")
 
 
-listUserFollowing = on_command("listFollowing", rule=to_me, aliases={"查询关注", "查询成分"}, block=True)
+listUserFollowing = on_command("listFollowing", rule=privateMessageRule, aliases={"查询关注", "查询成分"}, permission=PRIVATE_FRIEND)
 @listUserFollowing.handle()
-async def listFollowing(event: MessageEvent, args: Message = CommandArg()):
-    """
-    @description  :
-    响应查询成分命令，根据参数返回查询的内容
-    ---------
-    @param  :
-    合法的参数有：主播、up主、节目，可以同时带有多项参数
-    -------
-    @Returns  :
-    返回查询结果
-    -------
-    """
+async def listUserFollowingHandler(event: PrivateMessageEvent):
+    '''响应个人用户查询关注命令，根据参数返回查询的内容
+
+    Args:
+        event (MessageEvent): 消息事件
+        args (Message, optional): 合法的参数有：主播、up主、番剧，可以同时带有多项参数. Defaults to CommandArg().
+    '''
     
-    inputArgs = args.extract_plain_text().split()
+    inputArgs = event.get_message().extract_plain_text().split(' ')[1:]
     logger.debug(f'{__PLUGIN_NAME}查询成分命令输入的参数为{inputArgs}')
     
-    userID = event.get_user_id() # 命令发出者的QQ
+    userID = event.sender.user_id # 命令发出者的QQ
     userFile = f"./src/plugins/nonebot_plugin_bilibilibot/file/user/{userID}.json"
-    defaultArgs = ['直播', 'up主', '节目']
+    defaultArgs = ['直播', 'up主', '番剧']
 
     exceptArgs = set(inputArgs) - set(defaultArgs)
     if len(exceptArgs) != 0:
         logger.debug(f'{__PLUGIN_NAME}查询失败，存在错误参数{exceptArgs}')
-        await listUserFollowing.finish(f"查询失败，存在错误参数:{exceptArgs}\n请正确输入命令,例如: '查询成分 直播' 或 '查询成分 直播 up主 节目'")
+        await listUserFollowing.finish(f"查询失败，存在错误参数:{exceptArgs}\n请正确输入命令,例如: '查询成分 直播' 或 '查询成分 直播 up主 番剧'")
     
     if os.path.exists(userFile):
         with open(userFile, "r+") as f:
@@ -187,198 +156,234 @@ async def listFollowing(event: MessageEvent, args: Message = CommandArg()):
             else:
                 textMsg = '无关注的up主'
             await listUserFollowing.send(textMsg)
-        if '节目' in inputArgs:
+        if '番剧' in inputArgs:
             if userInfo[3]:
-                textMsg = '关注的节目\n'
+                textMsg = '关注的番剧\n'
                 for info in userInfo[3]:
                     textMsg += '> '+ info + '\n'
             else:
-                textMsg = '无关注的节目'
+                textMsg = '无关注的番剧'
             await listUserFollowing.send(textMsg)
         await listUserFollowing.finish()
     else:
         logger.debug(f'{__PLUGIN_NAME}用户文件不存在，准备创建')
         await createUserFile(userFile, nickName=event.sender.nickname)
         await listUserFollowing.finish("关注列表为空")
-    
 
-followUp = on_command("followUp", rule=to_me, aliases={"关注up"}, block=True)
-@followUp.handle()
-async def followVideo(matcher: Matcher, event: MessageEvent, args: Message = CommandArg()):
-    """
-    @description  :
-    响应关注up主的命令，将作为参数的uid加入用户的关注列表，将用户的qq加入主播的关注列表
-    ---------
-    @param  :
-    
-    -------
-    @Returns  :
-    
-    -------
-    """
-    
-    uidList = args.extract_plain_text().split()
-    userID = event.get_user_id() # 命令发出者的QQ
-    userFile = f"./src/plugins/nonebot_plugin_bilibilibot/file/user/{userID}.json"
-    successList = []
-    failList = []
+listGroupFollowing = on_command("listFollowing", rule=groupMessageRule, aliases={"查询关注", "查询成分"}, permission=GROUP_OWNER | GROUP_ADMIN)
+@listGroupFollowing.handle()
+async def listGroupFollowingHandler(event: GroupMessageEvent):
+    '''响应群查询关注命令，根据参数返回查询的内容
 
-    for uid in uidList:
-        isSuccess, s = await FollowModifyUpFile(uid, userID)
-        if isSuccess:
-            successList.append(s)
-        else:
-            failList.append(s)
-
-    if os.path.exists(userFile):
-        await FollowModifyUserFile(userFile, successList, 2)
-    else:
-        logger.debug(f'{__PLUGIN_NAME_VIDEO}用户文件{userFile}不存在, 准备创建')
-        await createUserFile(userFile, event.sender.nickname, ups = successList)
-
-    await followUp.finish(f"关注成功:\n{successList}\n关注失败:\n{failList}")
-
-unfollowUp = on_command("unfollowUp", rule=to_me, aliases={"取关up"}, block=True)
-@unfollowUp.handle()
-async def unfollowVideo(matcher: Matcher, event: MessageEvent, args: Message = CommandArg()):
-    """
-    @description  :
-    响应取关up命令，从用户的关注up主列表中去除取关up主，同时up主的关注列表中去除用户
-    可以同时取关多个up主
-    ---------
-    @param  :
+    Args:
+        event (GroupMessageEvent): 消息事件
+        args (Message, optional): 合法的参数有：主播、up主、番剧，可以同时带有多项参数. Defaults to CommandArg().
+    '''
     
-    -------
-    @Returns  :
+    inputArgs = event.get_message().extract_plain_text().split(' ')[1:]
+    logger.debug(f'{__PLUGIN_NAME}查询成分命令输入的参数为{inputArgs}')
     
-    -------
-    """
-    
-    uidList = args.extract_plain_text().split()
-    userID = event.get_user_id() # 命令发出者的QQ
-    userFile = f"./src/plugins/nonebot_plugin_bilibilibot/file/user/{userID}.json"
-    successList = []
-    failList = []
+    groupID = event.group_id # 命令发出者的QQ
+    groupFile = f"./src/plugins/nonebot_plugin_bilibilibot/file/group/{groupID}.json"
+    defaultArgs = ['直播', 'up主', '番剧']
 
-    for uid in uidList:
-        isSuccess, s = await UnfollowModifyUpFile(uid, userID)
-        if isSuccess:
-            successList.append(s)
-        else:
-            failList.append(s)
+    exceptArgs = set(inputArgs) - set(defaultArgs)
+    if len(exceptArgs) != 0:
+        logger.debug(f'{__PLUGIN_NAME}查询失败，存在错误参数{exceptArgs}')
+        await listGroupFollowing.finish(f"查询失败，存在错误参数:{exceptArgs}\n请正确输入命令,例如: '查询成分 直播' 或 '查询成分 直播 up主 番剧'")
     
-    if os.path.exists(userFile):
-        await UnfollowModifyUserFile(userFile, successList, 2)
-    else:
-        logger.debug(f'{__PLUGIN_NAME_VIDEO}用户文件{userFile}不存在, 准备创建')
-        await createUserFile(userFile, event.sender.nickname)
+    if os.path.exists(groupFile):
+        with open(groupFile, "r+") as f:
+            logger.debug(f'{__PLUGIN_NAME}打开群文件{groupFile}')
+            userInfo = json.load(f)
 
-    await unfollowUp.finish(f"取关成功: \n{successList}\n取关失败:\n{failList}")
-
-followTelegram = on_command("followTelegram", rule=to_me, aliases={"关注影视"}, block=True)
-@followTelegram.handle()
-async def followTelegramHandler(matcher: Matcher, event: MessageEvent, args: Message = CommandArg()):
-    """
-    @description  :
-    响应关注影视命令，修改节目文件与用户文件
-    ---------
-    @param  :
-    
-    -------
-    @Returns  :
-    
-    -------
-    """
-    epIDs = args.extract_plain_text().split()
-    userID = event.get_user_id() # 命令发出者的QQ
-    userFile = f"./src/plugins/nonebot_plugin_bilibilibot/file/user/{userID}.json"
-    successList = []
-    failList = []
-
-    for epID in epIDs:
-        if epID[0:2] != 'ep':
-            failList.append(epID + "(错误参数)")
-        else:
-            epID = epID[2:]
-            isSuccess, s = await FollowModifyTelegramFile(epID, userID)
-            if isSuccess:
-                successList.append(s)
+        if not inputArgs:
+            inputArgs = defaultArgs
+        if '直播' in inputArgs:
+            if userInfo[1]:
+                textMsg = '关注的主播:\n'
+                for info in userInfo[1]:
+                    textMsg += '> ' + info + '\n'
             else:
-                failList.append(s)
-    
-    if os.path.exists(userFile):
-        await FollowModifyUserFile(userFile, successList, 3)
+                textMsg = '无关注的主播'
+            await listGroupFollowing.send(textMsg)
+        if 'up主' in inputArgs:
+            if userInfo[2]:
+                textMsg = '关注的up主\n'
+                for info in userInfo[2]:
+                    textMsg += '> ' + info + '\n'
+            else:
+                textMsg = '无关注的up主'
+            await listGroupFollowing.send(textMsg)
+        if '番剧' in inputArgs:
+            if userInfo[3]:
+                textMsg = '关注的番剧\n'
+                for info in userInfo[3]:
+                    textMsg += '> '+ info + '\n'
+            else:
+                textMsg = '无关注的番剧'
+            await listGroupFollowing.send(textMsg)
+        await listGroupFollowing.finish()
     else:
-        logger.debug(f'{__PLUGIN_NAME_TELE}用户文件{userFile}不存在, 准备创建')
-        await createUserFile(userFile, event.sender.nickname, telegrams=successList)
+        logger.debug(f'{__PLUGIN_NAME}群文件不存在，准备创建')
+        bot = get_bot()
+        groupInfo = bot.get_group_info(groupID)
+        name = groupInfo["group_name"]
+        await createUserFile(groupFile, name)
+        await listGroupFollowing.finish("关注列表为空")
 
-    await followUp.finish(f"关注成功:\n{successList}\n关注失败:\n{failList}")
+userFollowUp = on_message(rule=privateMessageRule & regex("^关注up([ ]+[\d]+)+"), permission=PRIVATE_FRIEND)
+@userFollowUp.handle()
+async def userFollowUpHandler(event: PrivateMessageEvent):
+    '''响应个人关注up主信息，关注up主，修改文件
 
-unfollowTelegram = on_command("unfollowTelegram", rule=to_me, aliases={"取关影视"}, block=True)
-@unfollowTelegram.handle()
-async def unfollowTelegramHandler(matcher: Matcher, event: MessageEvent, args: Message = CommandArg()):
-    """
-    @description  :
-    响应取关影视命令，修改影视文件和用户文件
-    ---------
-    @param  :
+    Args:
+        event (PrivateMessageEvent): 消息事件
+        args (Message, optional): 关注的up主的uid. Defaults to CommandArg().
+    '''
     
-    -------
-    @Returns  :
-    
-    -------
-    """
-    seasonIDs = args.extract_plain_text().split()
-    userID = event.get_user_id() # 命令发出者的QQ
-    userFile = f"./src/plugins/nonebot_plugin_bilibilibot/file/user/{userID}.json"
-    successList = []
-    failList = []
+    uidList = event.get_message().extract_plain_text().split(' ')[1:]
+    successList, failList = await FollowUp(event, event.sender.user_id, uidList, 0)
+    await userFollowUp.finish(f"关注成功:\n{successList}\n关注失败:\n{failList}")
 
-    for seasonID in seasonIDs:
-        isSuccess, s = await UnfollowModifyTelegramFile(seasonID, userID)
-        if isSuccess:
-            successList.append(s)
-        else:
-            failList.append(s)
-    
-    if os.path.exists(userFile):
-        await UnfollowModifyUserFile(userFile, successList, 3)
-    else:
-        logger.debug(f'{__PLUGIN_NAME_TELE}用户文件{userFile}不存在, 准备创建')
-        await createUserFile(userFile, event.sender.nickname)
+groupFollowUp = on_message(rule=groupMessageRule & regex("^关注up([ ]+[\d]+)+"), permission=GROUP_ADMIN | GROUP_OWNER)
+@groupFollowUp.handle()
+async def groupFollowUpHandler(event: GroupMessageEvent):
+    '''响应群关注up主信息，关注up主，修改文件
 
-    await unfollowUp.finish(f"取关成功: \n{successList}\n取关失败:\n{failList}")
+    Args:
+        event (PrivateMessageEvent): 消息事件
+        args (Message, optional): 关注的up主的uid. Defaults to CommandArg().
+    '''
     
+    uidList = event.get_message().extract_plain_text().split(' ')[1:]
+    successList, failList = await FollowUp(event, event.group_id, uidList, 1)
+    await groupFollowUp.finish(f"关注成功:\n{successList}\n关注失败:\n{failList}")
 
-followUpByShare = on_message(rule=regex('\[CQ:json,[\w\W]*"appid":100951776[\w\W]*space.bilibili.com[\w\W]*[\w\W]*\]'))
+userUnfollowUp = on_message(rule=privateMessageRule & regex("^取关up([ ]+[\d]+)+"), permission=PRIVATE_FRIEND)
+@userUnfollowUp.handle()
+async def userUnfollowUpHandler(event: PrivateMessageEvent):
+    '''响应个人用户取关up主信息，取关up主
+
+    Args:
+        event (PrivateMessageEvent): 消息事件
+        args (Message, optional): 取关的up主uid. Defaults to CommandArg().
+    '''
+
+    uidList = event.get_message().extract_plain_text().split(' ')[1:]
+    successList, failList = await UnfollowUp(event, event.sender.user_id, uidList, 0)
+    await userUnfollowUp.finish(f"取关成功: \n{successList}\n取关失败:\n{failList}")
+
+groupUnfollowUp = on_message(rule=groupMessageRule & regex("^取关up([ ]+[\d]+)+"), permission=GROUP_ADMIN | GROUP_OWNER)
+@groupUnfollowUp.handle()
+async def groupUnfollowUpHandler(event: GroupMessageEvent):
+    '''响应个人用户取关up主信息，取关up主
+
+    Args:
+        event (PrivateMessageEvent): 消息事件
+        args (Message, optional): 取关的up主uid. Defaults to CommandArg().
+    '''
+
+    uidList = event.get_message().extract_plain_text().split(' ')[1:]
+    successList, failList = await UnfollowUp(event, event.group_id, uidList, 1)
+    await groupUnfollowUp.finish(f"取关成功: \n{successList}\n取关失败:\n{failList}")
+
+userFollowTelegram = on_message(rule=privateMessageRule & regex("^关注番剧([ ]+ep[\d]+)+"), permission=PRIVATE_FRIEND)
+@userFollowTelegram.handle()
+async def userFollowTelegramHandler(event: PrivateMessageEvent):
+    '''响应个人用户关注番剧消息，修改文件
+
+    Args:
+        event (MessageEvent): 消息事件
+        args (Message, optional): 关注的番剧的epid. Defaults to CommandArg().
+    '''
+
+    epIDs = event.get_message().extract_plain_text().split(' ')[1:]
+    successList, failList = await FollowTelegram(event, event.sender.user_id, epIDs, 0)
+    await userFollowTelegram.finish(f"关注成功:\n{successList}\n关注失败:\n{failList}")
+
+groupFollowTelegram = on_message(rule=groupMessageRule & regex("^关注番剧([ ]+ep[\d]+)+"), permission=GROUP_ADMIN | GROUP_OWNER)
+@groupFollowTelegram.handle()
+async def groupFollowTelegramHandler(event: GroupMessageEvent):
+    '''响应群关注番剧消息，修改文件
+
+    Args:
+        event (MessageEvent): 消息事件
+        args (Message, optional): 关注的番剧的epid. Defaults to CommandArg().
+    '''
+
+    epIDs = event.get_message().extract_plain_text().split(' ')[1:]
+    successList, failList = await FollowTelegram(event, event.group_id, epIDs, 0)
+    await groupFollowTelegram.finish(f"关注成功:\n{successList}\n关注失败:\n{failList}")
+
+userUnfollowTelegram = on_message(rule=privateMessageRule & regex("^取关番剧([ ]+[\d]+)+"), permission=PRIVATE_FRIEND)
+@userUnfollowTelegram.handle()
+async def userUnfollowTelegramHandler(event: PrivateMessageEvent):
+    '''响应个人用户取关番剧消息，修改文件
+
+    Args:
+        event (MessageEvent): 消息事件
+        args (Message, optional): _description_. Defaults to CommandArg().
+    '''
+    
+    seasonIDs = event.get_message().extract_plain_text().split(' ')[1:]
+    successList, failList = await UnfollowTelegram(event, event.sender.user_id, seasonIDs, 0)
+    await userUnfollowTelegram.finish(f"取关成功: \n{successList}\n取关失败:\n{failList}")
+
+groupUnfollowTelegram = on_message(rule=groupMessageRule & regex("^取关番剧([ ]+[\d]+)+"), permission=GROUP_ADMIN | GROUP_OWNER)
+@groupUnfollowTelegram.handle()
+async def groupUnfollowTelegramHandler(event: PrivateMessageEvent):
+    '''响应群取关番剧消息，修改文件
+
+    Args:
+        event (MessageEvent): 消息事件
+        args (Message, optional): _description_. Defaults to CommandArg().
+    '''
+    
+    seasonIDs = event.get_message().extract_plain_text().split(' ')[1:]
+    successList, failList = await UnfollowTelegram(event, event.sender.user_id, seasonIDs, 1)
+    await groupUnfollowTelegram.finish(f"取关成功: \n{successList}\n取关失败:\n{failList}")
+    
+followUpByShare = on_message(
+    rule=regex('\[CQ:json,[\w\W]*"appid":100951776[\w\W]*space.bilibili.com[\w\W]*[\w\W]*\]'), 
+    permission=GROUP_ADMIN | GROUP_OWNER | PRIVATE_FRIEND
+    )
 @followUpByShare.handle()
-async def upShareHandler(matcher: Matcher, event: MessageEvent):
-    userID = event.get_user_id()
-    logger.debug(f"{__PLUGIN_NAME_VIDEO}收到来自用户{userID}的B站空间分享")
-    event.get_message().extract_plain_text()
+async def upShareHandler(event: Union[PrivateMessageEvent, GroupMessageEvent]):
+    '''响应用户或群分享up主空间连接
+    WARN: 有可能导致误关注
+
+    Args:
+        event (Union[PrivateMessageEvent, GroupMessageEvent]): 消息事件
+    '''
+
     sJson = event.get_message()[-1].get('data')
     logger.debug(f'{__PLUGIN_NAME_VIDEO}收到B站空间分享的Json为: {sJson}')
     data = json.loads(sJson['data'])
     uid = data['meta']['news']['jumpUrl'].split('?')[0].split('/')[-1]
     logger.debug(f"{__PLUGIN_NAME_VIDEO}up主的uid为:{uid}")
 
-    isSuccess, s = await FollowModifyUpFile(uid, userID)
-    if isSuccess:
-        userFile = f"./src/plugins/nonebot_plugin_bilibilibot/file/user/{userID}.json"
-        if os.path.exists(userFile):
-            await FollowModifyUserFile(userFile, [s], 2)
-        else:
-            logger.debug(f'{__PLUGIN_NAME_VIDEO}用户文件{userFile}不存在, 准备创建')
-            await createUserFile(userFile, event.sender.nickname, ups = [s])
-        await followUpByShare.finish(f"关注up <{s}> 成功")
-    else:
-        await followUpByShare.finish(f"关注失败: {s}")
+    if isinstance(event, PrivateMessageEvent):
+        successList, failList = await FollowUp(event, event.sender.user_id, [int(uid)], 0)
+    if isinstance(event, GroupMessageEvent):
+        successList, failList = await FollowUp(event, event.sender.user_id, [int(uid)], 1)
 
-followStreamerByShare = on_message(rule=regex('^\[CQ:json,[\w\W]*"appid":100951776[\w\W]*live.bilibili.com[\w\W]*'))
+    if successList:
+        await followUpByShare.finish(f"关注up成功: <{successList[0]}>")
+    elif failList:
+        await followUpByShare.finish(f"关注up失败: <{failList[0]}> ")
+
+followStreamerByShare = on_message(
+    rule=regex('^\[CQ:json,[\w\W]*"appid":100951776[\w\W]*live.bilibili.com[\w\W]*'),
+    permission=GROUP_ADMIN | GROUP_OWNER | PRIVATE_FRIEND
+    )
 @followStreamerByShare.handle()
-async def streamerShareHandler(matcher: Matcher, event: MessageEvent):
-    userID = event.get_user_id()
-    logger.debug(f'{__PLUGIN_NAME_STREAM}收到来自用户{userID}的直播间分享')
+async def streamerShareHandler(event: Union[PrivateMessageEvent, GroupMessageEvent]):
+    '''响应个人用户/群的直播间分享
+
+    Args:
+        event (Union[PrivateMessageEvent, GroupMessageEvent]): 消息事件
+    '''
     sJson = event.get_message()[-1].get('data')
     logger.debug(f'{__PLUGIN_NAME_VIDEO}收到B站直播间分享的Json为: {sJson}')
     data = json.loads(sJson['data'])
@@ -394,52 +399,63 @@ async def streamerShareHandler(matcher: Matcher, event: MessageEvent):
         await followStreamerByShare.finish('关注失败: 连接错误')
     else:
         if isUidSuccess:
-            isSuccess, s = await FollowModifyStreamerFile(uid, userID)
-            if isSuccess:
-                userFile = f"./src/plugins/nonebot_plugin_bilibilibot/file/user/{userID}.json"
-                if os.path.exists(userFile):
-                    await FollowModifyUserFile(userFile, [s], 1)
-                else:
-                    logger.debug(f'{__PLUGIN_NAME_STREAM}用户文件{userFile}不存在, 准备创建')
-                    await createUserFile(userFile, event.sender.nickname, streamers = [s])
-                await followStreamerByShare.finish(f'关注主播{s}成功')
-            else:
-                await followStreamerByShare.finish(f'关注失败: {s}')
+            if isinstance(event, PrivateMessageEvent):
+                successList, failList = await FollowStreamers(event, event.sender.user_id, [uid], 0)
+            if isinstance(event, GroupMessageEvent):
+                successList, failList = await FollowStreamers(event, event.group_id, [uid], 1)
+            
+            if successList:
+                await followUpByShare.finish(f"关注主播成功: <{successList[0]}>")
+            elif failList:
+                await followUpByShare.finish(f"关注主播失败: <{failList[0]}> ")
+
         else:
             await followStreamerByShare.finish(f'关注失败: 非法uid')
 
-followTelegramByShare = on_message(rule = regex('^\[CQ:json[\w\W]*"appid":100951776[\w\W]*www.bilibili.com\/bangumi\/play\/[\w\W]*'))
+followTelegramByShare = on_message(
+    rule = regex('^\[CQ:json[\w\W]*"appid":100951776[\w\W]*www.bilibili.com\/bangumi\/play\/[\w\W]*'),
+    permission=GROUP_ADMIN | GROUP_OWNER | PRIVATE_FRIEND
+)
 @followTelegramByShare.handle()
-async def telegramShareHandler(matcher: Matcher, event: MessageEvent):
-    userID = event.get_user_id()
-    logger.debug(f'{__PLUGIN_NAME_TELE}收到来自用户{userID}的影视分享')
+async def telegramShareHandler(event: Union[PrivateMessageEvent, GroupMessageEvent]):
+    '''响应用户/群分享番剧页面
+
+    Args:
+        event (Union[PrivateMessageEvent, GroupMessageEvent]): 消息事件
+    '''
     sJson = event.get_message()[-1].get('data')
     data = json.loads(sJson['data'])
     epID = data['meta']['detail_1']['qqdocurl'].split('?')[0].split('/')[-1]
     epID = epID[2:]
-    logger.debug(f"{__PLUGIN_NAME_TELE}影视的epID为:{epID}")
+    logger.debug(f"{__PLUGIN_NAME_TELE}番剧的epID为:{epID}")
 
-    isSuccess, s = await FollowModifyTelegramFile(epID, userID)
-    if isSuccess:
-        userFile = f"./src/plugins/nonebot_plugin_bilibilibot/file/user/{userID}.json"
-        if os.path.exists(userFile):
-            await FollowModifyUserFile(userFile, [s], 3)
-        else:
-            logger.debug(f'{__PLUGIN_NAME_TELE}用户文件{userFile}不存在, 准备创建')
-            await createUserFile(userFile, event.sender.nickname, telegrams = [s])
-        await followUpByShare.finish(f"关注影视 <{s}> 成功")
-    else:
-        await followUpByShare.finish(f"关注失败: {s}")
+    if isinstance(event, PrivateMessageEvent):
+        successList, failList = await FollowTelegram(event, event.sender.user_id, [epID], 0)
+    if isinstance(event, GroupMessageEvent):
+        successList, failList = await FollowTelegram(event, event.group_id, [epID], 1)
+    
+    if successList:
+        await followUpByShare.finish(f"关注番剧成功: <{successList[0]}>")
+    elif failList:
+        await followUpByShare.finish(f"关注番剧失败: <{failList[0]}> ")
 
-followByShareB23Url = on_message(rule = regex('^\[CQ:json[\w\W]*"appid":100951776[\w\W]*b23.tv[\w\W]*'))
+followByShareB23Url = on_message(
+    rule = regex('^\[CQ:json[\w\W]*"appid":100951776[\w\W]*b23.tv[\w\W]*'),
+    permission=GROUP_OWNER | GROUP_ADMIN | PRIVATE_FRIEND
+)
 @followByShareB23Url.handle()
-async def b23UrlShareHandler(matcher: Matcher, event: MessageEvent):
-    userID = event.get_user_id()
-    logger.debug(f'{__PLUGIN_NAME_TELE}收到来自用户{userID}的短链接分享')
+async def b23UrlShareHandler(event: Union[PrivateMessageEvent, GroupMessageEvent]):
     sJson = event.get_message()[-1].get('data')
     shortLink = re.search("https:\/\/b23.tv\/\w+", sJson['data'])
     b23Url = shortLink.group()
     logger.debug(f'{__PLUGIN_NAME}提取出短链接为{b23Url}')
+    
+    if isinstance(event, PrivateMessageEvent):
+        msgType = 0
+        userID = event.sender.user_id
+    if isinstance(event, GroupMessageEvent):
+        msgType = 1
+        userID = event.group_id
 
     try:
         isSuccess, idType, id = parseB23Url(b23Url)
@@ -460,68 +476,57 @@ async def b23UrlShareHandler(matcher: Matcher, event: MessageEvent):
                     await followByShareB23Url.finish('关注失败: 连接错误')
                 else:
                     if isUidSuccess:
-                        isModifySuccess, s = await FollowModifyStreamerFile(uid, userID)
-                        if isModifySuccess:
-                            userFile = f"./src/plugins/nonebot_plugin_bilibilibot/file/user/{userID}.json"
-                            if os.path.exists(userFile):
-                                await FollowModifyUserFile(userFile, [s], 1)
-                            else:
-                                logger.debug(f'{__PLUGIN_NAME_STREAM}用户文件{userFile}不存在, 准备创建')
-                                await createUserFile(userFile, event.sender.nickname, streamers = [s])
-                            await followByShareB23Url.finish(f'关注主播{s}成功')
-                        else:
-                            await followByShareB23Url.finish(f'关注失败: {s}')
+                        successList, failList = await FollowStreamers(event, userID, [uid], msgType)
+                        if successList:
+                            await followByShareB23Url.finish(f"关注成功: {successList[0]}")
+                        elif failList:
+                            await followByShareB23Url.finish(f"关注失败: {failList[0]}")
                     else:
                         await followByShareB23Url.finish(f'关注失败: 非法uid')
+
             elif idType == 2:
-                isModifySuccess, s = await FollowModifyUpFile(id, userID)
-                if isModifySuccess:
-                    userFile = f"./src/plugins/nonebot_plugin_bilibilibot/file/user/{userID}.json"
-                    if os.path.exists(userFile):
-                        await FollowModifyUserFile(userFile, [s], 2)
-                    else:
-                        logger.debug(f'{__PLUGIN_NAME_VIDEO}用户文件{userFile}不存在, 准备创建')
-                        await createUserFile(userFile, event.sender.nickname, ups = [s])
-                    await followByShareB23Url.finish(f"关注up <{s}> 成功")
-                else:
-                    await followByShareB23Url.finish(f"关注失败: {s}")
+                successList, failList = await FollowUp(event, userID, [uid], msgType)
+                if successList:
+                    await followByShareB23Url.finish(f"关注成功: {successList[0]}")
+                elif failList:
+                    await followByShareB23Url.finish(f"关注失败: {failList[0]}")
+
             elif idType == 3:
-                isModifySuccess, s = await FollowModifyTelegramFile(id, userID)
-                if isModifySuccess:
-                    userFile = f"./src/plugins/nonebot_plugin_bilibilibot/file/user/{userID}.json"
-                    if os.path.exists(userFile):
-                        await FollowModifyUserFile(userFile, [s], 3)
-                    else:
-                        logger.debug(f'{__PLUGIN_NAME_TELE}用户文件{userFile}不存在, 准备创建')
-                        await createUserFile(userFile, event.sender.nickname, telegrams = [s])
-                    await followByShareB23Url.finish(f"关注影视 <{s}> 成功")
-                else:
-                    await followByShareB23Url.finish(f"关注失败: {s}")
+                successList, failList = await FollowTelegram(event, userID, [uid], msgType)
+                if successList:
+                    await followByShareB23Url.finish(f"关注成功: {successList[0]}")
+                elif failList:
+                    await followByShareB23Url.finish(f"关注失败: {failList[0]}")
         else:
             await followByShareB23Url.finish(f"关注失败: 非法短链接{b23Url}")
 
-helpCommand = on_command("help",rule=to_me, aliases={'帮助'}, block=True)
+helpCommand = on_command("help",permission=PRIVATE_FRIEND | GROUP_ADMIN | GROUP_OWNER, aliases={'帮助'})
 @helpCommand.handle()
-async def sendHelpMsg(matcher: Matcher, event: MessageEvent):
-    userID = event.get_user_id()
+async def sendHelpMsg(event: MessageEvent):
+    userID = event.sender.user_id
     logger.debug(f'用户{userID}正在获取帮助')
     helpMsg = ""
     with open('./src/plugins/nonebot_plugin_bilibilibot/file/source/help.txt', 'r') as f:
         helpMsg = f.read()
     await helpCommand.finish(helpMsg)
 
-publicBroacast = on_command("broacast", rule=to_me, aliases={'广播'}, permission=permission.SUPERUSER, block=True)
+publicBroacast = on_command("broacast", aliases={'广播'}, permission=permission.SUPERUSER)
 @publicBroacast.handle()
-async def sendBroacast(matcher: Matcher, event: MessageEvent):
-    userID = event.get_user_id()
+async def sendBroacast(event: MessageEvent):
+    userID = event.sender.user_id
     logger.debug(f'超级用户{userID}正在发起广播')
     announcement = ""
     announcementPath = './src/plugins/nonebot_plugin_bilibilibot/file/source/announcement.txt'
     if os.path.exists(announcementPath):
         with open('./src/plugins/nonebot_plugin_bilibilibot/file/source/announcement.txt', 'r') as f:
             announcement = f.read()
+
         users = GetAllUser()
         await SendMsgToUsers(announcement, users)
+
+        groups = GetAllGroup()
+        await SendMsgToGroups(announcement, groups)
+
         await publicBroacast.finish("公告发送成功")
     else:
         logger.debug(f'{__PLUGIN_NAME}公告文件不存在')
@@ -530,7 +535,7 @@ async def sendBroacast(matcher: Matcher, event: MessageEvent):
 unknownMessage = on_message(rule=to_me, priority=30)
 @unknownMessage.handle()
 async def unknownMessageHandler(matcher: Matcher, event: MessageEvent):
-    userID = event.get_user_id()
+    userID = event.sender.user_id
     logger.debug(f"用户{userID}发送了一条未知信息")
     msg = "❌未知指令，请检查输入或通过/help指令获取帮助"
     await unknownMessage.finish(msg)

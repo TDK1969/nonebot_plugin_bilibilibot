@@ -1,7 +1,6 @@
-from ctypes import Union
 import requests
 import json
-from typing import Tuple, List
+from typing import Tuple, List, Union
 import sys
 import traceback
 import nonebot
@@ -150,12 +149,12 @@ def GetUidByRoomNumber(roomNumber: str) -> Tuple[bool, str]:
     else:
         return (False, '')
     
-async def FollowModifyStreamerFile(uid: str, userID: str, type: int) -> Tuple[bool, str]:
+async def FollowModifyStreamerFile(uid: str, userID: int, type: int) -> Tuple[bool, str]:
     '''根据用户/群关注主播，修改主播文件
 
     Args:
         uid (str): 主播的uid
-        userID (str): 用户的uid或群号
+        userID (int): 用户的uid或群号
         type (int): 0-用户，1-群
 
     Returns:
@@ -213,12 +212,12 @@ async def FollowModifyStreamerFile(uid: str, userID: str, type: int) -> Tuple[bo
                 return (False, uid + "(非法uid)")
                 
 
-async def UnfollowModifyStreamerFile(uid: str, userID: str, type: int) -> Tuple[bool, str]:
+async def UnfollowModifyStreamerFile(uid: str, userID: int, type: int) -> Tuple[bool, str]:
     '''根据用户取关主播，修改主播文件
 
     Args:
         uid (str): 主播的uid
-        userID (str):QQ号/群号
+        userID (int):QQ号/群号
         type (int): 0-个人用户，1-群
 
     Returns:
@@ -252,11 +251,11 @@ async def UnfollowModifyStreamerFile(uid: str, userID: str, type: int) -> Tuple[
     else:
         return (False, uid + "(错误参数)")
 
-async def followStreamers(
+async def FollowStreamers(
     event: Union[PrivateMessageEvent, GroupMessageEvent], 
     id: int, 
     uidList: List[str],
-    type: int
+    userType: int
     ) -> List[List[str]]:
     '''用户/群对主播进行关注
 
@@ -264,17 +263,17 @@ async def followStreamers(
         event (Union[PrivateMessageEvent, GroupMessageEvent]): 消息事件
         id (int): 用户qq或群号
         uidList (List[str]): 关注的主播uid
-        type (int): 0-用户, 1-群
+        userType (int): 0-用户, 1-群
 
     Returns:
         List[List[str]]: [[关注成功], [关注失败]]
     '''
-    userFile = f"./src/plugins/nonebot_plugin_bilibilibot/file/{'user' if type == 0 else 'group'}/{id}.json"
+    userFile = f"./src/plugins/nonebot_plugin_bilibilibot/file/{'user' if userType == 0 else 'group'}/{id}.json"
     successList = []
     failList = []
 
     for uid in uidList:
-        isSuccess, s = await FollowModifyStreamerFile(uid, id, type)
+        isSuccess, s = await FollowModifyStreamerFile(uid, id, userType)
         if isSuccess:
             successList.append(s)
         else:
@@ -285,9 +284,9 @@ async def followStreamers(
     else:
         logger.debug(f'{__PLUGIN_NAME}用户文件{userFile}不存在, 准备创建')
         name = event.sender.nickname
-        if type == 1:
+        if userType == 1:
             bot = get_bot()
-            groupInfo = bot.get_group_info(id)
+            groupInfo = await bot.get_group_info(group_id=id)
             name = groupInfo["group_name"]
 
         await createUserFile(userFile, name, streamers=successList)
@@ -295,7 +294,7 @@ async def followStreamers(
     return [successList, failList]
 
 
-async def unfollowStreamers(
+async def UnfollowStreamers(
     event: Union[PrivateMessageEvent, GroupMessageEvent], 
     id: int, 
     uidList: List[str],
@@ -330,7 +329,7 @@ async def unfollowStreamers(
         name = event.sender.nickname
         if type == 1:
             bot = get_bot()
-            groupInfo = bot.get_group_info(id)
+            groupInfo = await bot.get_group_info(group_id=id)
             name = groupInfo["group_name"]
         await createUserFile(userFile, name)
     

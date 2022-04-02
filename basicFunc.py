@@ -133,6 +133,26 @@ def GetAllUser() -> List[str]:
         result.append(userID)
     return result
 
+def GetAllGroup() -> List[str]:
+    """
+    @description  :
+    获取所有群
+    ---------
+    @param  :
+    无
+    -------
+    @Returns  :
+    返回所有群号组成的列表
+    -------
+    """
+    
+    users = os.listdir('./src/plugins/nonebot_plugin_bilibilibot/file/group')
+    result = []
+    for user in users:
+        userID = user.split('.')[0]
+        result.append(userID)
+    return result
+
 async def SendMsgToUsers(msg: str, users: List[str]):
     """
     @description  :
@@ -150,6 +170,18 @@ async def SendMsgToUsers(msg: str, users: List[str]):
     bot = get_bot()
     for user in users:
         await bot.send_msg(message=msg, user_id = user)
+    
+async def SendMsgToGroups(msg: str, groups: List[str]):
+    '''向所有群组发送公告
+
+    Args:
+        msg (str): 公告内容
+        groups (List[str]): 群组列表
+    '''
+    
+    bot = get_bot()
+    for group in groups:
+        await bot.send_msg(message=msg, group_id = group)
 
 def CheckDir():
     """
@@ -169,29 +201,24 @@ def CheckDir():
     if not os.path.exists(baseDir + 'source'):
         logger.debug(f'{__PLUGIN_NAME}source文件夹不存在')
         os.makedirs(baseDir + 'source')
-    else:
-        logger.debug(f'{__PLUGIN_NAME}source文件夹存在')
         
     if not os.path.exists(baseDir + 'stream'):
         logger.debug(f'{__PLUGIN_NAME}stream文件夹不存在')
         os.makedirs(baseDir + 'stream')
-    else:
-        logger.debug(f'{__PLUGIN_NAME}stream文件夹存在')
-        
+    
     if not os.path.exists(baseDir + 'telegram'):
         logger.debug(f'{__PLUGIN_NAME}telegram文件夹不存在')
         os.makedirs(baseDir + 'telegram')
-    else:
-        logger.debug(f'{__PLUGIN_NAME}telegram文件夹存在')
-        
+    
     if not os.path.exists(baseDir + 'up'):
         logger.debug(f'{__PLUGIN_NAME}up文件夹不存在')
         os.makedirs(baseDir + 'up')
-    else:
-        logger.debug(f'{__PLUGIN_NAME}up文件夹存在')
         
     if not os.path.exists(baseDir + 'user'):
         logger.debug(f'{__PLUGIN_NAME}user文件夹不存在')
         os.makedirs(baseDir + 'user')
-    else:
-        logger.debug(f'{__PLUGIN_NAME}user文件夹存在')
+    
+    if not os.path.exists(baseDir + 'group'):
+        logger.debug(f'{__PLUGIN_NAME}group文件夹不存在')
+        os.makedirs(baseDir + 'group')
+

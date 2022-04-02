@@ -1,13 +1,14 @@
 import requests
 import json
-from typing import Tuple, List
+from typing import Tuple, List, Union
 import sys
 import os
 import traceback
 import nonebot
 from nonebot.log import logger
 from nonebot.adapters.onebot.v11 import MessageSegment
-
+from nonebot.adapters.onebot.v11.event import GroupMessageEvent, PrivateMessageEvent
+from .basicFunc import *
 
 __PLUGIN_NAME = "B站整合~影视/番剧"
 biliTeleInfoUrl = 'https://api.bilibili.com/pgc/web/season/section?season_id={}'
@@ -121,6 +122,9 @@ async def CheckTeleUpdate():
                     
                     for follower in info[2]:
                         await schedBot.send_msg(message=textMsg + coverMsg, user_id=follower)
+                    
+                    for group in info[3]:
+                        await schedBot.send_msg(message=textMsg + coverMsg, group_id=group)
                     logger.info(f"[{__PLUGIN_NAME}]通知用户节目《{info[0]}》已更新第{res[1]}集")
             except Exception as e:
                 ex_type, ex_val, _ = sys.exc_info()
@@ -133,20 +137,17 @@ async def CheckTeleUpdate():
                     json.dump(info, f)
                     logger.info(f"[{__PLUGIN_NAME}]文件FollowTelegramFile已更新！")
 
-async def FollowModifyTelegramFile(epID: str, userID: str) -> Tuple[bool, str]:
-    """
-    @description  :
-    根据用户关注节目，修改节目的文件
-    ---------
-    @param  :
-    epID: 节目的ID
-    userID: 用户的qq号
-    -------
-    @Returns  :
-    返回一个元组
-    [isSuccess, telegramName | '']
-    -------
-    """ 
+async def FollowModifyTelegramFile(epID: str, userID: int, type: int) -> Tuple[bool, str]:
+    '''根据用户关注节目，修改节目的文件
+
+    Args:
+        epID (str): 节目的id
+        userID (int): 用户的qq号/群号
+        type (int): 0-个人用户，1-群号
+
+    Returns:
+        Tuple[bool, str]: [是否成功，信息]
+    '''
 
     if not epID.isdigit():
         logger.debug(f'{__PLUGIN_NAME}存在错误参数{epID}')
@@ -165,11 +166,11 @@ async def FollowModifyTelegramFile(epID: str, userID: str) -> Tuple[bool, str]:
                 logger.debug(f'{__PLUGIN_NAME}节目{res[2]}文件已经存在')
                 with open(telegramFile) as f:
                     telegramInfo: List = json.load(f)
-                    # telegramInfo = [telegramTitle, latestIndex, [followers]]
+                    # telegramInfo = [telegramTitle, latestIndex, [userFollowers], [groupFollowers]]
                     logger.debug(f'{__PLUGIN_NAME}正在读取节目文件{telegramFile}')
 
-                    if userID not in telegramInfo[2]:
-                        telegramInfo[2].append(userID)
+                    if userID not in telegramInfo[2 + type]:
+                        telegramInfo[2 + type].append(userID)
                         logger.debug(f'{__PLUGIN_NAME}用户{userID}关注节目{res[2]}成功')
                         f.seek(0)
                         f.truncate()
@@ -180,7 +181,9 @@ async def FollowModifyTelegramFile(epID: str, userID: str) -> Tuple[bool, str]:
                         return (False, res[2] + "(已关注)")
             else:
                 logger.debug(f'{__PLUGIN_NAME}节目{res[2]}文件不存在')
-                telegramInfo = [res[2], res[3], [userID]]
+                telegramInfo = [res[2], res[3], [], []]
+                telegramInfo[2 + type].append(userID)
+
                 with open(telegramFile, "w+") as f:
                     json.dump(telegramInfo, f, ensure_ascii=False)
                 logger.debug(f'{__PLUGIN_NAME}已创建节目{res[2]}文件')
@@ -191,20 +194,18 @@ async def FollowModifyTelegramFile(epID: str, userID: str) -> Tuple[bool, str]:
             return (False, epID + "(错误的epID)")
         
 
-async def UnfollowModifyTelegramFile(seasonID: str, userID: str) -> Tuple[bool, str]:
-    """
-    @description  :
-    根据用户取关节目，修改节目文件
-    ---------
-    @param  :
-    seasonID: 节目的ID  
-    userID: 用户的qq号
-    -------
-    @Returns  :
-    返回一个元组
-    [isSuccess, seasonTitle | seasonID(reason)]
-    -------
-    """
+async def UnfollowModifyTelegramFile(seasonID: str, userID: int, type: int) -> Tuple[bool, str]:
+    '''根据用户/群取关节目，修改节目文件
+
+    Args:
+        seasonID (str): 节目的ID
+        userID (int): 用户qq号/群号     
+        type (int): 0-个人用户，1-群号
+
+    Returns:
+        Tuple[bool, str]: [是否成功, 信息]
+    '''
+
     if not seasonID.isdigit():
         return (False, seasonID + "(错误参数)")
     
@@ -212,14 +213,14 @@ async def UnfollowModifyTelegramFile(seasonID: str, userID: str) -> Tuple[bool, 
     if os.path.exists(telegramFile):
         with open(telegramFile, "r+") as f:
             telegramInfo: List = json.load(f)
-            # telegramInfo = [telegramTitle, latestIndex, [followers]]
+            # telegramInfo = [telegramTitle, latestIndex, [userFollowers], [groupFollowers]]
             logger.debug(f'{__PLUGIN_NAME}正在读取节目{telegramInfo[0]}文件')
-            if userID not in telegramInfo[2]:
+            if userID not in telegramInfo[2 + type]:
                 logger.debug(f'{__PLUGIN_NAME}用户{userID}未关注节目{telegramInfo[0]}')
                 return (False, seasonID + "未关注")
             else:
-                telegramInfo[2].remove(userID)
-                if telegramInfo[2]:
+                telegramInfo[2 + type].remove(userID)
+                if telegramInfo[2] and telegramInfo[3]:
                     f.seek(0)
                     f.truncate()
                     json.dump(telegramInfo, f)
@@ -232,9 +233,91 @@ async def UnfollowModifyTelegramFile(seasonID: str, userID: str) -> Tuple[bool, 
     else:
         logger.debug(f'{__PLUGIN_NAME}用户{userID}未关注节目{seasonID}')
         return (False, seasonID + "(未关注)")
-        
-                
-                    
+
+async def FollowTelegram(
+    event: Union[PrivateMessageEvent, GroupMessageEvent], 
+    id: int, 
+    epIDs: List[str],
+    type: int
+    ) -> List[List[str]]:
+    '''个人用户/群关注番剧
+
+    Args:
+        event (Union[PrivateMessageEvent, GroupMessageEvent]): 消息事件
+        id (int): qq号/群号
+        epIDs (List[str]): 关注的番剧号
+        type (int): 0-个人用户，1-群
+
+    Returns:
+        List[List[str]]: [是否成功，信息]
+    '''
+    userFile = f"./src/plugins/nonebot_plugin_bilibilibot/file/{'user' if type == 0 else 'group'}/{id}.json"
+    successList = []
+    failList = []
+
+    for epID in epIDs:
+        if epID[0:2] != 'ep':
+            failList.append(epID + "(错误参数)")
+        else:
+            epID = epID[2:]
+            isSuccess, s = await FollowModifyTelegramFile(epID, id, type)
+            if isSuccess:
+                successList.append(s)
+            else:
+                failList.append(s)
+    
+    if os.path.exists(userFile):
+        await FollowModifyUserFile(userFile, successList, 3)
+    else:
+        logger.debug(f'{__PLUGIN_NAME}用户文件{userFile}不存在, 准备创建')
+        name = event.sender.nickname
+        if type == 1:
+            bot = get_bot()
+            groupInfo = await bot.get_group_info(group_id=id)
+            name = groupInfo["group_name"]
+        await createUserFile(userFile, name, telegrams=successList)    
+
+    return [successList, failList] 
+
+async def UnfollowTelegram(
+    event: Union[PrivateMessageEvent, GroupMessageEvent], 
+    id: int, 
+    seasonIDs: List[str],
+    type: int
+    ) -> List[List[str]]:
+    '''个人用户/群取关番剧
+
+    Args:
+        event (Union[PrivateMessageEvent, GroupMessageEvent]): 消息事件
+        id (int): qq号/群号
+        epIDs (List[str]): 取关的番剧号
+        type (int): 0-个人用户，1-群
+
+    Returns:
+        List[List[str]]: [是否成功，信息]
+    '''
+    userFile = f"./src/plugins/nonebot_plugin_bilibilibot/file/{'user' if type == 0 else 'group'}/{id}.json"
+    successList = []
+    failList = []
+
+    for seasonID in seasonIDs:
+        isSuccess, s = await UnfollowModifyTelegramFile(seasonID, id, type)
+        if isSuccess:
+            successList.append(s)
+        else:
+            failList.append(s)
+    
+    if os.path.exists(userFile):
+        await UnfollowModifyUserFile(userFile, successList, 3)
+    else:
+        logger.debug(f'{__PLUGIN_NAME}用户文件{userFile}不存在, 准备创建')
+        name = event.sender.nickname
+        if type == 1:
+            bot = get_bot()
+            groupInfo = await bot.get_group_info(group_id=id)
+            name = groupInfo["group_name"]
+        await createUserFile(userFile, name)
+    return [successList, failList]                 
                 
 
             
