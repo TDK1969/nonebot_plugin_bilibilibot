@@ -234,7 +234,7 @@ async def UnfollowModifyStreamerFile(uid: str, userID: int, type: int) -> Tuple[
                     return (False, uid + "(未关注)")
                 else:
                     streamerInfo[3 + type].remove(userID)
-                    if streamerInfo[3] and streamerInfo[4]:
+                    if streamerInfo[3] or streamerInfo[4]:
                         f.seek(0)
                         f.truncate()
                         json.dump(streamerInfo, f, ensure_ascii=False)

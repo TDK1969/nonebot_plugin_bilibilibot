@@ -113,7 +113,7 @@ async def listFollowingCommandHandler(event: Union[PrivateMessageEvent, GroupMes
 followUpCommand = on_command("关注up", permission=ALL_PERMISSION)
 @followUpCommand.handle()
 async def followUpCommandHandler(event: Union[PrivateMessageEvent, GroupMessageEvent], args: Message = CommandArg()):
-    uidList = args.extract_plain_text().split()
+    uidList = args.extract_plain_text().split() 
     if isinstance(event, PrivateMessageEvent):
         successList, failList = await FollowUp(event, event.sender.user_id, uidList, 0)
     if isinstance(event, GroupMessageEvent):
@@ -128,7 +128,7 @@ async def unfollowUpCommandHandler(event: Union[PrivateMessageEvent, GroupMessag
         successList, failList = await UnfollowUp(event, event.sender.user_id, uidList, 0)
     if isinstance(event, GroupMessageEvent):
         successList, failList = await UnfollowUp(event, event.group_id, uidList, 1)
-    await unfollowUpCommand.finish(f"关注成功:\n{successList}\n关注失败:\n{failList}")
+    await unfollowUpCommand.finish(f"取关成功:\n{successList}\n取关失败:\n{failList}")
 
 followTelegramCommand = on_command("关注番剧", permission=ALL_PERMISSION)
 @followTelegramCommand.handle()
@@ -148,7 +148,7 @@ async def unfollowTelegramCommandHandler(event: Union[PrivateMessageEvent, Group
         successList, failList = await UnfollowTelegram(event, event.sender.user_id, seasonIDs, 0)
     if isinstance(event, GroupMessageEvent):
         successList, failList = await UnfollowTelegram(event, event.group_id, seasonIDs, 1)
-    await unfollowTelegramCommand.finish(f"关注成功:\n{successList}\n关注失败:\n{failList}")
+    await unfollowTelegramCommand.finish(f"取关成功:\n{successList}\n取关失败:\n{failList}")
 
 followUpByShare = on_message(
     rule=regex('\[CQ:json,[\w\W]*"appid":100951776[\w\W]*space.bilibili.com[\w\W]*[\w\W]*\]') & privateMessageRule, 
@@ -305,6 +305,7 @@ async def sendBroacast(event: MessageEvent):
     if os.path.exists(announcementPath):
         with open(f'{PackagePath}/file/source/announcement.txt', 'r') as f:
             announcement = f.read()
+            
 
         users = GetAllUser()
         await SendMsgToUsers(announcement, users)
@@ -319,7 +320,7 @@ async def sendBroacast(event: MessageEvent):
 
 scheduler = require("nonebot_plugin_apscheduler").scheduler
 scheduler.add_job(CheckBiliStream, "interval", seconds=10, id="biliStream", misfire_grace_time=90)
-scheduler.add_job(CheckUpUpdate, "interval", minutes=5, id="biliUp", misfire_grace_time=90)
+scheduler.add_job(CheckUpUpdate, "interval", minutes=1, id="biliUp", misfire_grace_time=90)
 scheduler.add_job(CheckTeleUpdate, "interval", minutes=5, id="biliTele", misfire_grace_time=90)
 
 CheckDir()

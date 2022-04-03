@@ -220,7 +220,7 @@ async def UnfollowModifyTelegramFile(seasonID: str, userID: int, type: int) -> T
                 return (False, seasonID + "未关注")
             else:
                 telegramInfo[2 + type].remove(userID)
-                if telegramInfo[2] and telegramInfo[3]:
+                if telegramInfo[2] or telegramInfo[3]:
                     f.seek(0)
                     f.truncate()
                     json.dump(telegramInfo, f, ensure_ascii=False)

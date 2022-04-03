@@ -62,8 +62,7 @@ async def CheckUpUpdate():
     for filename in upFiles:
         with open(videoDir + '/' + filename, 'r+') as f:
             info = json.load(f)
-            # upInfo = [upName, latestVideoTimeStamp, [followers]]
-            shouldUpdated = False
+            # upInfo = [upName, latestVideoTimeStamp, [userfollowers], [groupfollowers]]
             schedBot = nonebot.get_bot()
 
             try:
@@ -207,7 +206,7 @@ async def UnfollowModifyUpFile(uid: str, userID: int, type: int) -> Tuple[bool, 
                     return (False, uid + "(未关注)")
                 else:
                     upInfo[2 + type].remove(userID)
-                    if upInfo[2] and upInfo[3]:
+                    if upInfo[2] or upInfo[3]:
                         f.seek(0)
                         f.truncate()
                         json.dump(upInfo, f, ensure_ascii=False)
