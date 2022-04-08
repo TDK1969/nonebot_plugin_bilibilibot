@@ -166,7 +166,7 @@ async def upShareHandler(event: PrivateMessageEvent):
     data = json.loads(sJson['data'])
     uid = data['meta']['news']['jumpUrl'].split('?')[0].split('/')[-1]
     
-    successList, failList = await FollowUp(event, event.sender.user_id, [int(uid)], 0)
+    successList, failList = await FollowUp(event, event.sender.user_id, [uid], 0)
     
     if successList:
         await followUpByShare.finish(f"关注up成功: <{successList[0]}>")
