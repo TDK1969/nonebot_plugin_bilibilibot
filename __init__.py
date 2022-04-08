@@ -171,7 +171,7 @@ async def upShareHandler(event: PrivateMessageEvent):
     if successList:
         await followUpByShare.finish(f"关注up成功: <{successList[0]}>")
     elif failList:
-        await followUpByShare.finish(f"关注up失败: <{failList[0]}> ")
+        await followUpByShare.finish(f"关注up失败: <{failList[0]}>")
 
 followStreamerByShare = on_message(
     rule=regex('^\[CQ:json,[\w\W]*"appid":100951776[\w\W]*live.bilibili.com[\w\W]*') & privateMessageRule,
