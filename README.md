@@ -64,6 +64,7 @@
 
 
 # 更新日志
+[完整日志](https://github.com/TDK1969/nonebot_plugin_bilibilibot/blob/main/file/source/ChangeLog.md)
 - **ver 2.0.2**
 ```
 1. 修复使用手机客户端分享链接关注up操作失败的bug
