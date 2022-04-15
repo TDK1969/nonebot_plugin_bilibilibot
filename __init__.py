@@ -292,21 +292,19 @@ helpCommand = on_command("help", permission=ALL_PERMISSION, aliases={'帮助'})
 async def sendHelpMsg(event: MessageEvent):
     userID = event.sender.user_id
     helpMsg = ""
-    with open(f'{PackagePath}/file/source/help.txt', 'r') as f:
-        helpMsg = f.read()
+    with open(f'{PackagePath}/file/source/help.json', 'r') as f:
+        helpMsg = json.load(f)
     await helpCommand.finish(helpMsg)
 
 publicBroacast = on_command("broacast", aliases={'广播'}, permission=permission.SUPERUSER)
 @publicBroacast.handle()
 async def sendBroacast(event: MessageEvent):
-    userID = event.sender.user_id
     announcement = ""
-    announcementPath = f'{PackagePath}/file/source/announcement.txt'
+    announcementPath = f'{PackagePath}/file/source/announcement.json'
     if os.path.exists(announcementPath):
-        with open(f'{PackagePath}/file/source/announcement.txt', 'r') as f:
-            announcement = f.read()
+        with open(announcementPath, 'r') as f:
+            announcement = json.load(f)
             
-
         users = GetAllUser()
         await SendMsgToUsers(announcement, users)
 
