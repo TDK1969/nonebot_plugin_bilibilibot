@@ -60,7 +60,7 @@ async def CheckUpUpdate():
     """
     upFiles = os.listdir(videoDir)
     for filename in upFiles:
-        with open(videoDir + '/' + filename, 'r+') as f:
+        with open(videoDir + '/' + filename, 'r+', encoding='utf-8') as f:
             info = json.load(f)
             # upInfo = [upName, latestVideoTimeStamp, [userfollowers], [groupfollowers]]
             schedBot = nonebot.get_bot()
@@ -141,7 +141,7 @@ async def FollowModifyUpFile(uid: str, userID: int, type: int) -> Tuple[bool, st
         if os.path.exists(upFile):
             logger.debug(f"{__PLUGIN_NAME}up主文件{upFile}已经存在")
 
-            with open(upFile, "r+") as f:
+            with open(upFile, "r+", encoding='utf-8') as f:
                 upInfo: List = json.load(f)
                 # upInfo = [upName, latestVideoTimeStamp, [userFollowers], [groupFollowers]]
                 logger.debug(f"{__PLUGIN_NAME}正在读取up主{upInfo[0]}文件")
@@ -170,7 +170,7 @@ async def FollowModifyUpFile(uid: str, userID: int, type: int) -> Tuple[bool, st
                     upInfo = [userName, latestTimeStamp, [], []]
                     upInfo[2 + type].append(userID)
 
-                    with open(upFile, "w+") as f:
+                    with open(upFile, "w+", encoding='utf-8') as f:
                         json.dump(upInfo, f, ensure_ascii=False)
                     
                     logger.debug(f"{__PLUGIN_NAME}已创建up主{userName}的文件")
@@ -197,7 +197,7 @@ async def UnfollowModifyUpFile(uid: str, userID: int, type: int) -> Tuple[bool, 
     if uid.isdigit():
         upFile = f"{PackagePath}/file/up/{uid}.json"
         if os.path.exists(upFile):
-            with open(upFile, "r+") as f:
+            with open(upFile, "r+", encoding='utf-8') as f:
                 upInfo: List = json.load(f)
                 # upInfo = [upName, latestVideoTimeStamp, [userFollowers], [groupFollowers]]
                 logger.debug(f"{__PLUGIN_NAME}正在读取用户{upInfo[0]}文件")
@@ -224,7 +224,7 @@ async def UnfollowModifyUpFile(uid: str, userID: int, type: int) -> Tuple[bool, 
 
 async def FollowUp(
     event: Union[PrivateMessageEvent, GroupMessageEvent], 
-    id: int, 
+    userID: int, 
     uidList: List[str],
     type: int
     ) -> List[List[str]]:
@@ -232,19 +232,19 @@ async def FollowUp(
 
     Args:
         event (Union[PrivateMessageEvent, GroupMessageEvent]): 消息事件
-        id (int): qq号/群号
+        userID (int): qq号/群号
         uidList (List[str]): up主的uid
         type (int): 0-个人用户，1-群        
 
     Returns:
         List[List[str]]: [是否成功，信息]
     '''
-    userFile = f"{PackagePath}/file/{'user' if type == 0 else 'group'}/{id}.json"
+    userFile = f"{PackagePath}/file/{'user' if type == 0 else 'group'}/{userID}.json"
     successList = []
     failList = []
 
     for uid in uidList:
-        isSuccess, s = await FollowModifyUpFile(uid, id, type)
+        isSuccess, s = await FollowModifyUpFile(uid, userID, type)
         if isSuccess:
             successList.append(s)
         else:
@@ -258,7 +258,7 @@ async def FollowUp(
 
         if type == 1:
             bot = get_bot()
-            groupInfo = await bot.get_group_info(group_id=id)
+            groupInfo = await bot.get_group_info(group_id=userID)
             name = groupInfo["group_name"]
 
         await createUserFile(userFile, name, ups=successList)
@@ -267,7 +267,7 @@ async def FollowUp(
 
 async def UnfollowUp(
     event: Union[PrivateMessageEvent, GroupMessageEvent], 
-    id: int, 
+    userID: int, 
     uidList: List[str],
     type: int
     ) -> List[List[str]]:
@@ -275,19 +275,19 @@ async def UnfollowUp(
 
     Args:
         event (Union[PrivateMessageEvent, GroupMessageEvent]): 消息事件
-        id (int): qq号/群号
+        userID (int): qq号/群号
         uidList (List[str]): 取关的up主
         type (int): 0-个人用户，1-群
 
     Returns:
         List[List[str]]: [是否成功，信息]
     '''
-    userFile = f"{PackagePath}/file/{'user' if type == 0 else 'group'}/{id}.json"
+    userFile = f"{PackagePath}/file/{'user' if type == 0 else 'group'}/{userID}.json"
     successList = []
     failList = []
 
     for uid in uidList:
-        isSuccess, s = await UnfollowModifyUpFile(uid, id, type)
+        isSuccess, s = await UnfollowModifyUpFile(uid, userID, type)
         if isSuccess:
             successList.append(s)
         else:
@@ -301,7 +301,7 @@ async def UnfollowUp(
 
         if type == 1:
             bot = get_bot()
-            groupInfo = await bot.get_group_info(group_id=id)
+            groupInfo = await bot.get_group_info(group_id=userID)
             name = groupInfo["group_name"]
         
         await createUserFile(userFile, name)

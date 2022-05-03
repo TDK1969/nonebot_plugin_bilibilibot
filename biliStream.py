@@ -62,7 +62,7 @@ async def CheckBiliStream():
     #logger.info(f'[{__PLUGIN_NAME}]开始检测开播状态')
     streamerFiles = os.listdir(streamDir)
     for filename in streamerFiles:
-        with open(streamDir + '/' + filename, 'r+') as f:
+        with open(streamDir + '/' + filename, 'r+', encoding='utf-8') as f:
             #logger.info(f'[{__PLUGIN_NAME}]打开文件{filename}！')
             info = json.load(f)
             # [username, isStreaming, roomURL, [followers]]
@@ -169,7 +169,7 @@ async def FollowModifyStreamerFile(uid: str, userID: int, type: int) -> Tuple[bo
     streamerFile = f"{PackagePath}/file/stream/{uid}.json"
     if os.path.exists(streamerFile):
         logger.debug(f"{__PLUGIN_NAME}主播{uid}文件已经存在")
-        with open(streamerFile, "r+") as f:
+        with open(streamerFile, "r+", encoding='utf-8') as f:
             streamerInfo: List = json.load(f)
             # streamerInfo = [streamerName, isStreaming, roomURL, [privateFollowers], [groupFollowers]]
             if userID not in streamerInfo[3 + type]:
@@ -200,7 +200,7 @@ async def FollowModifyStreamerFile(uid: str, userID: int, type: int) -> Tuple[bo
             if userName and roomURL:
                 streamerInfo = [userName, False, roomURL, [], []]
                 streamerInfo[3 + type].append(userID)
-                with open(streamerFile, "w+") as f:
+                with open(streamerFile, "w+", encoding='utf-8') as f:
                     json.dump(streamerInfo, f, ensure_ascii=False)
                 logger.debug(f"{__PLUGIN_NAME}用户/群{userID}关注主播{streamerInfo[0]}成功")
                 return (True, streamerInfo[0] + f"(uid: {uid})")
@@ -226,7 +226,7 @@ async def UnfollowModifyStreamerFile(uid: str, userID: int, type: int) -> Tuple[
     if uid.isdigit():
         streamerFile = f"{PackagePath}/file/stream/{uid}.json"
         if os.path.exists(streamerFile):
-            with open(streamerFile, "r+") as f:
+            with open(streamerFile, "r+", encoding='utf-8') as f:
                 streamerInfo: List = json.load(f)
                 # streamerInfo = [streamerName, isStreaming, roomURL, [privateFollowers], [groupFollowers]]
                 if userID not in streamerInfo[3 + type]:
@@ -252,7 +252,7 @@ async def UnfollowModifyStreamerFile(uid: str, userID: int, type: int) -> Tuple[
 
 async def FollowStreamers(
     event: Union[PrivateMessageEvent, GroupMessageEvent], 
-    id: int, 
+    userID: int, 
     uidList: List[str],
     userType: int
     ) -> List[List[str]]:
@@ -260,19 +260,19 @@ async def FollowStreamers(
 
     Args:
         event (Union[PrivateMessageEvent, GroupMessageEvent]): 消息事件
-        id (int): 用户qq或群号
+        userID (int): 用户qq或群号
         uidList (List[str]): 关注的主播uid
         userType (int): 0-用户, 1-群
 
     Returns:
         List[List[str]]: [[关注成功], [关注失败]]
     '''
-    userFile = f"{PackagePath}/file/{'user' if userType == 0 else 'group'}/{id}.json"
+    userFile = f"{PackagePath}/file/{'user' if userType == 0 else 'group'}/{userID}.json"
     successList = []
     failList = []
 
     for uid in uidList:
-        isSuccess, s = await FollowModifyStreamerFile(uid, id, userType)
+        isSuccess, s = await FollowModifyStreamerFile(uid, userID, userType)
         if isSuccess:
             successList.append(s)
         else:
@@ -285,7 +285,7 @@ async def FollowStreamers(
         name = event.sender.nickname
         if userType == 1:
             bot = get_bot()
-            groupInfo = await bot.get_group_info(group_id=id)
+            groupInfo = await bot.get_group_info(group_id=userID)
             name = groupInfo["group_name"]
 
         await createUserFile(userFile, name, streamers=successList)
@@ -295,7 +295,7 @@ async def FollowStreamers(
 
 async def UnfollowStreamers(
     event: Union[PrivateMessageEvent, GroupMessageEvent], 
-    id: int, 
+    userID: int, 
     uidList: List[str],
     type: int
     ) -> List[List[str]]:
@@ -303,19 +303,19 @@ async def UnfollowStreamers(
 
     Args:
         event (Union[PrivateMessageEvent, GroupMessageEvent]): 消息事件
-        id (int): 用户qq/群号
+        userID (int): 用户qq/群号
         uidList (List[str]): 取关主播列表
         type (int): 0-用户, 1-群
 
     Returns:
         List[List[str]]: [成功列表，失败列表]
     '''
-    userFile = f"{PackagePath}/file/{'user' if type == 0 else 'group'}/{id}.json"
+    userFile = f"{PackagePath}/file/{'user' if type == 0 else 'group'}/{userID}.json"
     successList = []
     failList = []
 
     for uid in uidList:
-        isSuccess, s = await UnfollowModifyStreamerFile(uid, id, type)
+        isSuccess, s = await UnfollowModifyStreamerFile(uid, userID, type)
         if isSuccess:
             successList.append(s)
         else:
@@ -328,7 +328,7 @@ async def UnfollowStreamers(
         name = event.sender.nickname
         if type == 1:
             bot = get_bot()
-            groupInfo = await bot.get_group_info(group_id=id)
+            groupInfo = await bot.get_group_info(group_id=userID)
             name = groupInfo["group_name"]
         await createUserFile(userFile, name)
     

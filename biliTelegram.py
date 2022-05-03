@@ -100,7 +100,7 @@ async def CheckTeleUpdate():
     """
     telegramFiles = os.listdir(telegramDir)
     for filename in telegramFiles:
-        with open(telegramDir + '/' + filename, 'r+') as f:
+        with open(telegramDir + '/' + filename, 'r+', encoding='utf-8') as f:
             info = json.load(f)
             # [telegramName, latestIndex, [followers]]
             schedBot = nonebot.get_bot()
@@ -164,7 +164,7 @@ async def FollowModifyTelegramFile(epID: str, userID: int, type: int) -> Tuple[b
             telegramFile = f"{PackagePath}/file/telegram/{res[1]}.json"
             if os.path.exists(telegramFile):
                 logger.debug(f'{__PLUGIN_NAME}节目{res[2]}文件已经存在')
-                with open(telegramFile) as f:
+                with open(telegramFile, "r+", encoding='utf-8') as f:
                     telegramInfo: List = json.load(f)
                     # telegramInfo = [telegramTitle, latestIndex, [userFollowers], [groupFollowers]]
                     logger.debug(f'{__PLUGIN_NAME}正在读取节目文件{telegramFile}')
@@ -184,7 +184,7 @@ async def FollowModifyTelegramFile(epID: str, userID: int, type: int) -> Tuple[b
                 telegramInfo = [res[2], res[3], [], []]
                 telegramInfo[2 + type].append(userID)
 
-                with open(telegramFile, "w+") as f:
+                with open(telegramFile, "w+", encoding='utf-8') as f:
                     json.dump(telegramInfo, f, ensure_ascii=False)
                 logger.debug(f'{__PLUGIN_NAME}已创建节目{res[2]}文件')
                 logger.debug(f'{__PLUGIN_NAME}用户{userID}关注主播{res[2]}成功')
@@ -211,7 +211,7 @@ async def UnfollowModifyTelegramFile(seasonID: str, userID: int, type: int) -> T
     
     telegramFile = f"{PackagePath}/file/telegram/{seasonID}.json"
     if os.path.exists(telegramFile):
-        with open(telegramFile, "r+") as f:
+        with open(telegramFile, "r+", encoding='utf-8') as f:
             telegramInfo: List = json.load(f)
             # telegramInfo = [telegramTitle, latestIndex, [userFollowers], [groupFollowers]]
             logger.debug(f'{__PLUGIN_NAME}正在读取节目{telegramInfo[0]}文件')
@@ -236,7 +236,7 @@ async def UnfollowModifyTelegramFile(seasonID: str, userID: int, type: int) -> T
 
 async def FollowTelegram(
     event: Union[PrivateMessageEvent, GroupMessageEvent], 
-    id: int, 
+    userID: int, 
     epIDs: List[str],
     type: int
     ) -> List[List[str]]:
@@ -244,14 +244,14 @@ async def FollowTelegram(
 
     Args:
         event (Union[PrivateMessageEvent, GroupMessageEvent]): 消息事件
-        id (int): qq号/群号
+        userID (int): qq号/群号
         epIDs (List[str]): 关注的番剧号
         type (int): 0-个人用户，1-群
 
     Returns:
         List[List[str]]: [是否成功，信息]
     '''
-    userFile = f"{PackagePath}/file/{'user' if type == 0 else 'group'}/{id}.json"
+    userFile = f"{PackagePath}/file/{'user' if type == 0 else 'group'}/{userID}.json"
     successList = []
     failList = []
 
@@ -260,7 +260,7 @@ async def FollowTelegram(
             failList.append(epID + "(错误参数)")
         else:
             epID = epID[2:]
-            isSuccess, s = await FollowModifyTelegramFile(epID, id, type)
+            isSuccess, s = await FollowModifyTelegramFile(epID, userID, type)
             if isSuccess:
                 successList.append(s)
             else:
@@ -273,7 +273,7 @@ async def FollowTelegram(
         name = event.sender.nickname
         if type == 1:
             bot = get_bot()
-            groupInfo = await bot.get_group_info(group_id=id)
+            groupInfo = await bot.get_group_info(group_id=userID)
             name = groupInfo["group_name"]
         await createUserFile(userFile, name, telegrams=successList)    
 
@@ -281,7 +281,7 @@ async def FollowTelegram(
 
 async def UnfollowTelegram(
     event: Union[PrivateMessageEvent, GroupMessageEvent], 
-    id: int, 
+    userID: int, 
     seasonIDs: List[str],
     type: int
     ) -> List[List[str]]:
@@ -289,19 +289,19 @@ async def UnfollowTelegram(
 
     Args:
         event (Union[PrivateMessageEvent, GroupMessageEvent]): 消息事件
-        id (int): qq号/群号
+        userID (int): qq号/群号
         epIDs (List[str]): 取关的番剧号
         type (int): 0-个人用户，1-群
 
     Returns:
         List[List[str]]: [是否成功，信息]
     '''
-    userFile = f"{PackagePath}/file/{'user' if type == 0 else 'group'}/{id}.json"
+    userFile = f"{PackagePath}/file/{'user' if type == 0 else 'group'}/{userID}.json"
     successList = []
     failList = []
 
     for seasonID in seasonIDs:
-        isSuccess, s = await UnfollowModifyTelegramFile(seasonID, id, type)
+        isSuccess, s = await UnfollowModifyTelegramFile(seasonID, userID, type)
         if isSuccess:
             successList.append(s)
         else:
@@ -314,7 +314,7 @@ async def UnfollowTelegram(
         name = event.sender.nickname
         if type == 1:
             bot = get_bot()
-            groupInfo = await bot.get_group_info(group_id=id)
+            groupInfo = await bot.get_group_info(group_id=userID)
             name = groupInfo["group_name"]
         await createUserFile(userFile, name)
     return [successList, failList]                 

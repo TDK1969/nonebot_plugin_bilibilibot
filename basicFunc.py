@@ -22,7 +22,9 @@ async def createUserFile(userFile: str, nickName: str, streamers: List[str]=[], 
         telegrams (List[str], optional): 关注的番剧. Defaults to [].
     '''
     
-    with open(userFile, 'w+') as f:
+    with open(userFile, 'w+', encoding='utf-8') as f:
+            logger.debug(f'{__PLUGIN_NAME}群名为{nickName}')
+            
             userInfo = [nickName, streamers, ups, telegrams]
             json.dump(userInfo, f, ensure_ascii=False)
     logger.debug(f'{__PLUGIN_NAME}用户文件{userFile}创建成功')
@@ -41,7 +43,7 @@ async def FollowModifyUserFile(userFile: str, successList: List[str], type: int)
     无返回值
     -------
     """
-    with open(userFile, "r+") as f:
+    with open(userFile, "r+", encoding='utf-8') as f:
         userInfo = json.load(f)
         userInfo[type] += successList
         # [nickname, [streamer], [up], [telegrams]]
@@ -64,7 +66,7 @@ async def UnfollowModifyUserFile(userFile: str, successList: List[str], type: in
     无返回值
     -------
     """
-    with open(userFile, "r+") as f:
+    with open(userFile, "r+", encoding='utf-8') as f:
         userInfo = json.load(f)
         userInfo[type] = list(set(userInfo[type]) - set(successList))
             # [nickname, [streamer], [up], [telegrams]]

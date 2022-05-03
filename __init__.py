@@ -8,8 +8,7 @@ from nonebot.adapters.onebot.v11 import Message, MessageSegment, MessageEvent
 from nonebot.adapters.onebot.v11.permission import GROUP_ADMIN, GROUP_OWNER, PRIVATE_FRIEND, GROUP_MEMBER
 from nonebot.adapters.onebot.v11.event import GroupMessageEvent, PrivateMessageEvent
 from nonebot.params import CommandArg
-
-
+from nonebot.permission import SUPERUSER
 from .config import Config
 
 from .biliStream import *
@@ -29,7 +28,7 @@ config = Config.parse_obj(global_config)
 
 __PLUGIN_NAME = "[B站整合]"
 
-ALL_PERMISSION = GROUP_ADMIN | GROUP_OWNER | PRIVATE_FRIEND
+ALL_PERMISSION = GROUP_ADMIN | GROUP_OWNER | PRIVATE_FRIEND | SUPERUSER
 
 followStreamerCommand = on_command("关注主播", permission=ALL_PERMISSION)
 @followStreamerCommand.handle()
@@ -70,42 +69,45 @@ async def listFollowingCommandHandler(event: Union[PrivateMessageEvent, GroupMes
         await listFollowingCommand.finish(f"查询失败，存在错误参数:{exceptArgs}\n请正确输入命令,例如: '查询成分 直播' 或 '查询成分 直播 up主 番剧'")
     
     if os.path.exists(userFile):
-        with open(userFile, "r+") as f:
+        with open(userFile, "r+", encoding='utf-8') as f:
             userInfo = json.load(f)
 
         if not inputArgs:
             inputArgs = defaultArgs
+
+        textMsg = ""
         if '直播' in inputArgs:
             if userInfo[1]:
-                textMsg = '关注的主播:\n'
+                textMsg += '关注的主播:\n'
                 for info in userInfo[1]:
                     textMsg += '> ' + info + '\n'
             else:
-                textMsg = '无关注的主播'
-            await listFollowingCommand.send(textMsg)
+                textMsg += '无关注的主播\n'
+        textMsg += '\n'
         if 'up主' in inputArgs:
             if userInfo[2]:
-                textMsg = '关注的up主\n'
+                textMsg += '关注的up主\n'
                 for info in userInfo[2]:
                     textMsg += '> ' + info + '\n'
             else:
-                textMsg = '无关注的up主'
-            await listFollowingCommand.send(textMsg)
+                textMsg += '无关注的up主\n'
+        textMsg += '\n'
         if '番剧' in inputArgs:
             if userInfo[3]:
-                textMsg = '关注的番剧\n'
+                textMsg += '关注的番剧\n'
                 for info in userInfo[3]:
                     textMsg += '> '+ info + '\n'
             else:
-                textMsg = '无关注的番剧'
-            await listFollowingCommand.send(textMsg)
+                textMsg += '无关注的番剧'
+        textMsg += '\n'
+        await listFollowingCommand.send(textMsg)
         await listFollowingCommand.finish()
     else:
         logger.info(f'{__PLUGIN_NAME}用户文件不存在，准备创建')
         name = event.sender.nickname
         if isinstance(event, GroupMessageEvent):
             bot = get_bot()
-            groupInfo = await bot.get_group_info(group_id=id)
+            groupInfo = await bot.get_group_info(group_id=groupID)
             name = groupInfo["group_name"]
         await createUserFile(userFile, nickName=name)
         await listFollowingCommand.finish("关注列表为空")
@@ -292,7 +294,7 @@ helpCommand = on_command("help", permission=ALL_PERMISSION, aliases={'帮助'})
 async def sendHelpMsg(event: MessageEvent):
     userID = event.sender.user_id
     helpMsg = ""
-    with open(f'{PackagePath}/file/source/help.json', 'r') as f:
+    with open(f'{PackagePath}/file/source/help.json', 'r', encoding='utf-8') as f:
         helpMsg = json.load(f)
     await helpCommand.finish(helpMsg)
 
@@ -302,7 +304,7 @@ async def sendBroacast(event: MessageEvent):
     announcement = ""
     announcementPath = f'{PackagePath}/file/source/announcement.json'
     if os.path.exists(announcementPath):
-        with open(announcementPath, 'r') as f:
+        with open(announcementPath, 'r', encoding='utf-8') as f:
             announcement = json.load(f)
             
         users = GetAllUser()
