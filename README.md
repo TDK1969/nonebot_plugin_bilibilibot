@@ -7,7 +7,7 @@
 # nonebot-plugin-bilibilibot
 
 👾 _NoneBot bilibili通知插件_ 👾
-<p>version: 2.0.3</p>
+<p>version: 2.0.4</p>
     
 </div>
 
@@ -43,10 +43,10 @@
 > SUPERSUSERS = ["your qq id"]
 
 # 注意事项
-- 将机器人加入群组后，只有**管理员或群主**才能对机器人进行操作
+- 将机器人加入群组后，只有**管理员\群主\超级管理员**才能对机器人进行操作
 - 未避免误触发，群组中不能使用分享链接来关注的功能
 - 由于需要同时处理群消息和私聊消息，建议在非调试环境中使用，否则日志将会出现很多的ignore消息
-- 如果需要修改公告内容，请修改file/source/announcement.txt文件
+- 如果需要修改公告内容，请修改file/source/announcement.json文件
 
 # 示例
 ## 获取帮助
@@ -65,6 +65,15 @@
 
 # 更新日志
 [完整日志](https://github.com/TDK1969/nonebot_plugin_bilibilibot/blob/main/file/source/ChangeLog.md)
+- **ver 2.0.4**
+```
+1. 修复在新的群中使用"查询关注"命令,创建文件失败的bug
+2. 修复由于没有指定文件编码而产生的特殊字符编码错误的bug
+3. 将"查询关注"命令的结果合并为一条发送
+4. 添加了超级管理员权限,超级管理员可以在非管理员的群进行机器人的操作
+```
+
+
 - **ver 2.0.3**
 ```
 1. 修复Windows中使用帮助和公告命令时发生txt文件编码错误的bug
