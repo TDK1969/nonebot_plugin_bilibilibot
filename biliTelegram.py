@@ -1,4 +1,3 @@
-import requests
 import json
 from typing import Tuple, List, Union
 import sys
@@ -9,6 +8,7 @@ from nonebot.log import logger
 from nonebot.adapters.onebot.v11 import MessageSegment
 from nonebot.adapters.onebot.v11.event import GroupMessageEvent, PrivateMessageEvent
 from .basicFunc import *
+import httpx
 
 __PLUGIN_NAME = "B站整合~影视/番剧"
 biliTeleInfoUrl = 'https://api.bilibili.com/pgc/web/season/section?season_id={}'
@@ -22,7 +22,7 @@ header = {
 
 FollowTelegramFile = '/root/project/NoneBot/TDK_Bot/src/file/FollowedTelegram.json'
 
-def GetTelegramInfo(seasonID: str, index: int) -> Tuple[bool, int, str, str, str]:
+async def GetTelegramInfo(seasonID: str, index: int) -> Tuple[bool, int, str, str, str]:
     """
     @description  :
     获取影视区作品的更新情况
@@ -36,8 +36,8 @@ def GetTelegramInfo(seasonID: str, index: int) -> Tuple[bool, int, str, str, str
     (是否更新, 最新集数, 最新集标题, 最新集链接, 封面链接)
     -------
     """
-    
-    response = requests.get(url=getEpisodesAPI.format(seasonID), headers=header)
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url=getEpisodesAPI.format(seasonID), headers=header)
     assert response.status_code == 200, '查询影视{}信息连接错误，status_code = {}'.format(response.status_code)
 
     response = json.loads(response.text)
@@ -57,7 +57,7 @@ def GetTelegramInfo(seasonID: str, index: int) -> Tuple[bool, int, str, str, str
         logger.debug(f"[{__PLUGIN_NAME}]查询的影视片不存在")
         return (False, 0, '', '', '')
 
-def GetSeasonIDByEpid(epID: str) -> Tuple[bool, str, str, int]:
+async def GetSeasonIDByEpid(epID: str) -> Tuple[bool, str, str, int]:
     """
     @description  :
     根据单集的epid，获取整季的seasonID以及名字
@@ -71,7 +71,8 @@ def GetSeasonIDByEpid(epID: str) -> Tuple[bool, str, str, int]:
     
     -------
     """
-    res = requests.get(url=getSeasonIDAPI.format(epID), headers=header)
+    async with httpx.AsyncClient() as client:
+        res = await client.get(url=getSeasonIDAPI.format(epID), headers=header)
     assert res.status_code == 200, f'获取seasonID时发生连接错误，status_code = {res.status_code}'
 
     res = json.loads(res.text)
@@ -108,7 +109,7 @@ async def CheckTeleUpdate():
             epID = filename.split('.')[0]
             
             try:
-                res = GetTelegramInfo(epID, info[1])
+                res = await GetTelegramInfo(epID, info[1])
                 if res[0]:
                     logger.info(f'{__PLUGIN_NAME}检测到影视剧{info[0]}更新')
                     
@@ -153,7 +154,7 @@ async def FollowModifyTelegramFile(epID: str, userID: int, type: int) -> Tuple[b
         logger.debug(f'{__PLUGIN_NAME}存在错误参数{epID}')
         return (False, epID + "(错误参数)")
     try:
-        res = GetSeasonIDByEpid(epID)
+        res = await GetSeasonIDByEpid(epID)
     except Exception:
         ex_type, ex_val, _ = sys.exc_info()
         exceptionMsg = '【错误报告】\n根据epID:{}获取seasonID时发生错误\n错误类型: {}\n错误值: {}\n'.format(epID, ex_type, ex_val)

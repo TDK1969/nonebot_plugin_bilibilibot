@@ -191,7 +191,7 @@ async def streamerShareHandler(event: PrivateMessageEvent):
     roomNumber = data['meta']['news']['jumpUrl'].split('?')[0].split('/')[-1]
     
     try:
-        isUidSuccess, uid = GetUidByRoomNumber(roomNumber)
+        isUidSuccess, uid = await GetUidByRoomNumber(roomNumber)
     except Exception:
         ex_type, ex_val, _ = sys.exc_info()
         logger.error(f'{__PLUGIN_NAME}获取主播 <{uid}> 信息时发生错误')
@@ -247,7 +247,7 @@ async def b23UrlShareHandler(event: PrivateMessageEvent):
     userID = event.sender.user_id
     
     try:
-        isSuccess, idType, id = parseB23Url(b23Url)
+        isSuccess, idType, id = await parseB23Url(b23Url)
     except Exception:
         ex_type, ex_val, _ = sys.exc_info()
         logger.error(f'{__PLUGIN_NAME}解析短链接 <{b23Url}> 时发生错误')
@@ -257,7 +257,7 @@ async def b23UrlShareHandler(event: PrivateMessageEvent):
         if isSuccess:
             if idType == 1:
                 try:
-                    isUidSuccess, uid = GetUidByRoomNumber(id)
+                    isUidSuccess, uid = await GetUidByRoomNumber(id)
                 except Exception:
                     ex_type, ex_val, _ = sys.exc_info()
                     logger.error(f'{__PLUGIN_NAME}获取主播 <{uid}> 信息时发生错误')

@@ -1,4 +1,3 @@
-import requests
 import json
 from typing import Tuple, List, Union
 import sys
@@ -19,7 +18,7 @@ header = {
 
 streamDir = f'{PackagePath}/file/stream/'
 
-def GetBiliStream(uid: str) -> Tuple[bool, str, str]:
+async def GetBiliStream(uid: str) -> Tuple[bool, str, str]:
     """
     @description  :
     获取bilibili直播间信息
@@ -32,8 +31,8 @@ def GetBiliStream(uid: str) -> Tuple[bool, str, str]:
     [是否正在直播，直播间标题，直播间封面链接]
     -------
     """
-    
-    response = requests.get(url=biliUserInfoUrl.format(uid), headers=header)
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url=biliUserInfoUrl.format(uid), headers=header)
     assert response.status_code == 200, '获取直播间信息时连接错误, status_code = {}'.format(response.status_code)
 
     response = json.loads(response.text)
@@ -70,7 +69,7 @@ async def CheckBiliStream():
             schedBot = nonebot.get_bot()
             
             try:
-                isStreaming, title, coverURL = GetBiliStream(filename.split('.')[0])
+                isStreaming, title, coverURL = await GetBiliStream(filename.split('.')[0])
                 if isStreaming and not info[1]:
                     logger.info(f'[{__PLUGIN_NAME}]检测到主播{info[0]}已开播！')
                     shouldUpdated = True
@@ -101,7 +100,7 @@ async def CheckBiliStream():
                 f.truncate()
                 json.dump(info, f, ensure_ascii=False) 
 
-def InitStreamerInfo(uid: str) -> Tuple[str, str]:
+async def InitStreamerInfo(uid: str) -> Tuple[str, str]:
     """
     @description  :
     根据uid，返回直播间信息
@@ -114,8 +113,8 @@ def InitStreamerInfo(uid: str) -> Tuple[str, str]:
     [用户名，直播间链接]
     -------
     """
-    
-    response = requests.get(url=biliUserInfoUrl.format(uid), headers=header)
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url=biliUserInfoUrl.format(uid), headers=header)
     response = json.loads(response.text)
     if response['code'] == 0:
         userName = response['data']['name']
@@ -128,7 +127,7 @@ def InitStreamerInfo(uid: str) -> Tuple[str, str]:
     else:
         return ('', '')
 
-def GetUidByRoomNumber(roomNumber: str) -> Tuple[bool, str]:
+async def GetUidByRoomNumber(roomNumber: str) -> Tuple[bool, str]:
     """
     @description  :
     根据直播间号获得uid
@@ -141,8 +140,8 @@ def GetUidByRoomNumber(roomNumber: str) -> Tuple[bool, str]:
     [isSuccess, uid | '']
     -------
     """
-    
-    res = requests.get(url=biliLiveInfoUrl.format(roomNumber), headers=header)
+    async with httpx.AsyncClient() as client:
+        res = await client.get(url=biliLiveInfoUrl.format(roomNumber), headers=header)
     assert res.status_code == 200, "获取直播间信息时出现连接错误"
     res = json.loads(res.text)
     if res['code'] == 0:
@@ -190,7 +189,7 @@ async def FollowModifyStreamerFile(uid: str, userID: int, type: int) -> Tuple[bo
     else:
         logger.debug(f"{__PLUGIN_NAME}用户{uid}文件不存在")
         try:
-            userName, roomURL = InitStreamerInfo(uid)
+            userName, roomURL = await InitStreamerInfo(uid)
         except Exception:
             ex_type, ex_val, _ = sys.exc_info()
             logger.error(f'{__PLUGIN_NAME}获取主播{uid}信息时发生错误')

@@ -1,4 +1,4 @@
-import requests
+import httpx
 import json
 from typing import Tuple, List, Union
 import sys
@@ -18,7 +18,7 @@ header = {
 videoDir = f"{PackagePath}/file/up/"
 
 # 视频
-def GetLatestVideo(uid: str, lastPostTime: int) -> Tuple[bool, str, str, int, str]:
+async def GetLatestVideo(uid: str, lastPostTime: int) -> Tuple[bool, str, str, int, str]:
     """
     @description  :
     根据uid和时间戳, 返回元组，表示存在新视频或无新视频
@@ -31,8 +31,8 @@ def GetLatestVideo(uid: str, lastPostTime: int) -> Tuple[bool, str, str, int, st
     返回一个元组[是否更新，bv号，标题，发布时间戳，封面的链接]
     -------
     """
-    
-    response = requests.get(url = baseUrl.format(uid), headers=header)
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url = baseUrl.format(uid), headers=header)
     assert response.status_code == 200, '获取视频列表时连接出错, status_code = {}'.format(response.status_code)
 
     response = json.loads(response.text)
@@ -66,7 +66,7 @@ async def CheckUpUpdate():
             schedBot = nonebot.get_bot()
 
             try:
-                res = GetLatestVideo(filename.split('.')[0], info[1])
+                res = await GetLatestVideo(filename.split('.')[0], info[1])
                 """
                 res[0]: 是否更新
                 res[1]: bv号
@@ -100,7 +100,7 @@ async def CheckUpUpdate():
 bilibili视频更新关注命令
 """
 
-def InitUpInfo(uid: str) -> Tuple[str, int]:
+async def InitUpInfo(uid: str) -> Tuple[str, int]:
     """
     @description  :
     根据uid查询up主信息
@@ -114,12 +114,12 @@ def InitUpInfo(uid: str) -> Tuple[str, int]:
     -------
     """
     
-    
-    response = requests.get(url=biliUserInfoUrl.format(uid), headers=header)
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url=biliUserInfoUrl.format(uid), headers=header)
     response = json.loads(response.text)
     if response['code'] == 0:
         userName = response['data']['name']
-        res = GetLatestVideo(uid, 0)
+        res = await GetLatestVideo(uid, 0)
         return (userName, res[3])
     else:
         return ('', '')
@@ -159,7 +159,7 @@ async def FollowModifyUpFile(uid: str, userID: int, type: int) -> Tuple[bool, st
             logger.debug(f"{__PLUGIN_NAME}up主{uid}文件不存在")
             
             try:
-                userName, latestTimeStamp = InitUpInfo(uid)
+                userName, latestTimeStamp = await InitUpInfo(uid)
             except Exception:
                 ex_type, ex_val, _ = sys.exc_info()
                 logger.error(f'{__PLUGIN_NAME}获取up主{uid}信息时发生错误')

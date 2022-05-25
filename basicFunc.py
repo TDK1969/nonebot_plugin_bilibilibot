@@ -1,7 +1,7 @@
 from typing import List, Tuple
 import json
 import re
-import requests
+import httpx
 import os
 from nonebot import get_bot
 from nonebot.log import logger
@@ -74,7 +74,7 @@ async def UnfollowModifyUserFile(userFile: str, successList: List[str], type: in
         f.truncate()
         json.dump(userInfo, f, ensure_ascii=False)
 
-def parseB23Url(url: str) -> Tuple[bool, int, str]:
+async def parseB23Url(url: str) -> Tuple[bool, int, str]:
     """
     @description  :
     对b23.tv短链接进行转换
@@ -90,7 +90,9 @@ def parseB23Url(url: str) -> Tuple[bool, int, str]:
     """ 
     API = 'https://duanwangzhihuanyuan.bmcx.com/web_system/bmcx_com_www/system/file/duanwangzhihuanyuan/get/?ajaxtimestamp=1646565831920'
     payload = {'turl': url}
-    res = requests.post(url=API, data=payload)
+    async with httpx.AsyncClient() as client:
+
+        res = await client.post(url=API, data=payload)
     assert res.status_code == 200, f'转换短链接时发生异常，status_code = {res.status_code}'
 
     if re.search("live.bilibili.com", res.text):
