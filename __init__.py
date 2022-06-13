@@ -292,7 +292,6 @@ async def b23UrlShareHandler(event: PrivateMessageEvent):
 helpCommand = on_command("help", permission=ALL_PERMISSION, aliases={'帮助'})
 @helpCommand.handle()
 async def sendHelpMsg(event: MessageEvent):
-    userID = event.sender.user_id
     helpMsg = ""
     with open(f'{PackagePath}/file/source/help.json', 'r', encoding='utf-8') as f:
         helpMsg = json.load(f)
@@ -319,7 +318,7 @@ async def sendBroacast(event: MessageEvent):
         await publicBroacast.finish("公告发送失败: 公告文件不存在") 
 
 scheduler = require("nonebot_plugin_apscheduler").scheduler
-scheduler.add_job(CheckBiliStream, "interval", seconds=10, id="biliStream", misfire_grace_time=90)
+scheduler.add_job(CheckBiliStream, "interval", minutes=1, id="biliStream", misfire_grace_time=90)
 scheduler.add_job(CheckUpUpdate, "interval", minutes=1, id="biliUp", misfire_grace_time=90)
 scheduler.add_job(CheckTeleUpdate, "interval", minutes=5, id="biliTele", misfire_grace_time=90)
 

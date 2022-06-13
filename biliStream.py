@@ -35,9 +35,13 @@ async def GetBiliStream(uid: str) -> Tuple[bool, str, str]:
         response = await client.get(url=biliUserInfoUrl.format(uid), headers=header)
     assert response.status_code == 200, '获取直播间信息时连接错误, status_code = {}'.format(response.status_code)
 
-    response = json.loads(response.text)
+    response = response.json()
+    
+    
     if response['code'] == 0:
         liveRoom = response['data']['live_room']
+        if liveRoom is None:
+            return (False, '', '')
         liveStatus = liveRoom['liveStatus']
         title = liveRoom['title']
         coverURL = liveRoom['cover']
