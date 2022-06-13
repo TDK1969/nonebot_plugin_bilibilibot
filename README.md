@@ -7,7 +7,7 @@
 # nonebot-plugin-bilibilibot
 
 👾 _NoneBot bilibili通知插件_ 👾
-<p>version: 2.0.4</p>
+<p>version: 2.0.5</p>
     
 </div>
 
@@ -65,26 +65,10 @@
 
 # 更新日志
 [完整日志](https://github.com/TDK1969/nonebot_plugin_bilibilibot/blob/main/file/source/ChangeLog.md)
-- **ver 2.0.4**
+- **ver 2.0.5**
 ```
-1. 修复在新的群中使用"查询关注"命令,创建文件失败的bug
-2. 修复由于没有指定文件编码而产生的特殊字符编码错误的bug
-3. 将"查询关注"命令的结果合并为一条发送
-4. 添加了超级管理员权限,超级管理员可以在非管理员的群进行机器人的操作
+1. 网络通信修改为使用httpx使用异步通信
 ```
-
-
-- **ver 2.0.3**
-```
-1. 修复Windows中使用帮助和公告命令时发生txt文件编码错误的bug
-```
-
-- **ver 2.0.2**
-```
-1. 修复使用手机客户端分享链接关注up操作失败的bug
-2. 删除了一些无关文字
-```
-
 
 # 特别鸣谢
 - 感谢[@0w0w0](https://github.com/a0w0w0)帮助测试
