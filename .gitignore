@@ -130,3 +130,6 @@ dmypy.json
 
 # json File
 *.json
+
+# database File
+bilibili.db 

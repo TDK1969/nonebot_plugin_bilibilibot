@@ -7,14 +7,14 @@
 # nonebot-plugin-bilibilibot
 
 👾 _NoneBot bilibili通知插件_ 👾
-<p>version: 2.0.5</p>
+<p>version: 2.1.0</p>
     
 </div>
 
 # 简介
 基于[Nonebot2](https://github.com/nonebot/nonebot2)的bilibili通知插件，可将up主，主播以及番剧的更新/直播动态推送到QQ
 
-**已支持v2.0.0-beta.2**
+**已支持v2.0.0-beta.5**
 ## 依赖
 - 适配器: onebot v11
 - [go-cqhttp](https://github.com/Mrs4s/go-cqhttp)
@@ -65,6 +65,12 @@
 
 # 更新日志
 [完整日志](https://github.com/TDK1969/nonebot_plugin_bilibilibot/blob/main/file/source/ChangeLog.md)
+- **ver 2.1.0**
+```
+1. 将文件存储方式修改为数据库,取代原来的JSON文件存储,解决编码或异步的问题
+2. 适配Nonebot v2.0.0-beta.5
+```
+
 - **ver 2.0.5**
 ```
 1. 网络通信修改为使用httpx使用异步通信
