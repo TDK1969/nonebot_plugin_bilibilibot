@@ -1,4 +1,3 @@
-from cmath import exp
 from .db import bili_database
 from .exception import BiliConnectionError, BiliDatebaseError
 import httpx
