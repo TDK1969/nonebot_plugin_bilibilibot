@@ -9,13 +9,25 @@ from nonebot.params import CommandArg
 from nonebot.permission import SUPERUSER
 from .config import Config
 
+import os
+print("正在初始化....")
+if not os.path.exists(os.getcwd() + "/plugins/nonebot_plugin_bilibilibot/file/user"):
+    os.makedirs(os.getcwd() + "/plugins/nonebot_plugin_bilibilibot/file/user")
+if not os.path.exists(os.getcwd() + "/plugins/nonebot_plugin_bilibilibot/file/group"):
+    os.makedirs(os.getcwd() + "/plugins/nonebot_plugin_bilibilibot/file/group")
+if not os.path.exists(os.getcwd() + "/plugins/nonebot_plugin_bilibilibot/file/up"):
+    os.makedirs(os.getcwd() + "/plugins/nonebot_plugin_bilibilibot/file/up")
+if not os.path.exists(os.getcwd() + "/plugins/nonebot_plugin_bilibilibot/file/stream"):
+    os.makedirs(os.getcwd() + "/plugins/nonebot_plugin_bilibilibot/file/stream")
+if not os.path.exists(os.getcwd() + "/plugins/nonebot_plugin_bilibilibot/file/telegram"):
+    os.makedirs(os.getcwd() + "/plugins/nonebot_plugin_bilibilibot/file/telegram")
+
 from .biliStream import *
 from .biliVideo import *
 from .biliTelegram import *
 from .basicFunc import *
 from .rule import groupMessageRule, privateMessageRule
 
-import os
 import json
 import sys
 import re
