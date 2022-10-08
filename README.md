@@ -71,11 +71,11 @@
 2. 可以使用ep_id, season_id和media_id对番剧进行关注,需要携带前两个字符
 3. 本次更新需要重置数据库,因此会丢失旧版本的关注数据,需要重新关注
 ```
-ep_id: https://www.bilibili.com/bangumi/play/**ep433947**
+ep_id: https://www.bilibili.com/bangumi/play/ep433947, 中的**ep433947**
 
-season_id: https://www.bilibili.com/bangumi/play/**ss39431**
+season_id: https://www.bilibili.com/bangumi/play/ss39431, 中的**ss39431**
 
-media_id: https://www.bilibili.com/bangumi/media/**md28235123**
+media_id: https://www.bilibili.com/bangumi/media/md28235123, 中的**md28235123**
 
 
 - **ver 2.1.0**
