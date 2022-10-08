@@ -24,7 +24,7 @@ from typing import Union
 global_config = get_driver().config
 config = Config.parse_obj(global_config)
 
-__PLUGIN_NAME = "[B站整合]"
+__PLUGIN_NAME = "[bilibilibot]"
 
 ALL_PERMISSION = GROUP_ADMIN | GROUP_OWNER | PRIVATE_FRIEND | SUPERUSER
 
@@ -112,7 +112,7 @@ async def listFollowingCommandHandler(event: Union[PrivateMessageEvent, GroupMes
                     textMsg += '关注的番剧\n'
                     for season_id in followed_telegram_list:
                         season_id, telegram_title, _ = bili_database.query_info(4, season_id[0])
-                        textMsg += '> ' + f"{telegram_title}(season_id: {season_id})" + '\n'
+                        textMsg += '> ' + f"{telegram_title}(season_id: ss{season_id})" + '\n'
                 
                 else:
                     textMsg += '无关注的番剧'
@@ -153,11 +153,11 @@ followTelegramCommand = on_command("关注番剧", permission=ALL_PERMISSION)
 @followTelegramCommand.handle()
 async def followTelegramCommandHandler(event: Union[PrivateMessageEvent, GroupMessageEvent], args: Message = CommandArg()):
     await create_user(event)
-    ep_id_list = args.extract_plain_text().split()
+    tele_id_list = args.extract_plain_text().split()
     if isinstance(event, PrivateMessageEvent):
-        success_list, fail_list = await follow_telegram_list(event.sender.user_id, ep_id_list, 0)
+        success_list, fail_list = await follow_telegram_list(event.sender.user_id, tele_id_list, 0)
     if isinstance(event, GroupMessageEvent):
-        success_list, fail_list = await follow_telegram_list(event.group_id, ep_id_list, 1)
+        success_list, fail_list = await follow_telegram_list(event.group_id, tele_id_list, 1)
     await followTelegramCommand.finish(f"关注成功:\n{success_list}\n关注失败:\n{fail_list}")
 
 unfollowTelegramCommand = on_command("取关番剧", permission=ALL_PERMISSION)
@@ -211,18 +211,19 @@ async def streamerShareHandler(event: PrivateMessageEvent):
         data = json.loads(sJson['data'])
         roomNumber = data['meta']['news']['jumpUrl'].split('?')[0].split('/')[-1]
 
-        isUidSuccess, uid = await get_uid_by_room_number(roomNumber)
-        if isUidSuccess:
-            success_list, fail_list = await follow_liver_list(event, event.sender.user_id, [uid], 0)
+        uid, _ = await bili_client.init_liver_info_by_room_id(roomNumber)
 
-            if success_list:
-                await followUpByShare.finish(f"关注主播成功: <{success_list[0]}>")
-            elif fail_list:
-                await followUpByShare.finish(f"关注主播失败: <{fail_list[0]}> ")
-        else:
-            await followStreamerByShare.finish(f'关注失败: 非法uid')
+        success_list, fail_list = await follow_liver_list(event, event.sender.user_id, [uid], 0)
+
+        if success_list:
+            await followUpByShare.finish(f"关注主播成功: <{success_list[0]}>")
+        elif fail_list:
+            await followUpByShare.finish(f"关注主播失败: <{fail_list[0]}> ")
+        
     except nonebot.exception.FinishedException:
         pass
+    except BiliInvalidRoomId:
+        await followStreamerByShare.finish('关注失败: 无效的房间号')
     except Exception:
         ex_type, ex_val, _ = sys.exc_info()
         logger.error(f'{__PLUGIN_NAME}获取主播 <{uid}> 信息时发生错误')
@@ -244,7 +245,6 @@ async def telegramShareHandler(event: PrivateMessageEvent):
     sJson = event.get_message()[-1].get('data')
     data = json.loads(sJson['data'])
     epID = data['meta']['detail_1']['qqdocurl'].split('?')[0].split('/')[-1]
-    epID = epID[2:]
     
     success_list, fail_list = await follow_telegram_list(event.sender.user_id, [epID], 0)
     
@@ -253,56 +253,55 @@ async def telegramShareHandler(event: PrivateMessageEvent):
     elif fail_list:
         await followUpByShare.finish(f"关注番剧失败: <{fail_list[0]}> ")
 
-followByShareB23Url = on_message(
+follow_by_share_short_url = on_message(
     rule = regex('^\[CQ:json[\w\W]*"appid":100951776[\w\W]*b23.tv[\w\W]*') & privateMessageRule,
     permission=PRIVATE_FRIEND
 )
-@followByShareB23Url.handle()
-async def b23UrlShareHandler(event: PrivateMessageEvent):
+@follow_by_share_short_url.handle()
+async def short_url_handler(event: PrivateMessageEvent):
     try:
         await create_user(event)
         sJson = event.get_message()[-1].get('data')
         shortLink = re.search("https:\/\/b23.tv\/\w+", sJson['data'])
-        b23Url = shortLink.group()
+        short_url = shortLink.group()
+        logger.debug(f"get short url = {short_url}")
         
-        msgType = 0
-        userID = event.sender.user_id
-    
-        isSuccess, idType, uid = await parseB23Url(b23Url)
-        if isSuccess:
-            if idType == 1:
-                isUidSuccess, uid = await get_uid_by_room_number(uid)
-                if isUidSuccess:
-                    success_list, fail_list = await follow_liver_list(userID, [uid], msgType)
-                    if success_list:
-                        await followByShareB23Url.finish(f"关注成功: {success_list[0]}")
-                    elif fail_list:
-                        await followByShareB23Url.finish(f"关注失败: {fail_list[0]}")
-                else:
-                    await followByShareB23Url.finish(f'关注失败: 非法uid')
+        msg_type = 0
+        user_id = event.sender.user_id
+        id_type, target_uid = await bili_client.parse_short_url(short_url)
+        #isSuccess, id_type, uid = await parseB23Url(short_url)
+        if id_type == 0:
+            success_list, fail_list = await follow_up_list(user_id, [target_uid], msg_type)
+            if success_list:
+                await follow_by_share_short_url.finish(f"关注成功: {success_list[0]}")
+            elif fail_list:
+                await follow_by_share_short_url.finish(f"关注失败: {fail_list[0]}")
+            
+        elif id_type == 1:
+            liver_uid, _ = await bili_client.init_liver_info_by_room_id(target_uid)
+            success_list, fail_list = await follow_liver_list(user_id, [liver_uid], msg_type)
+            if success_list:
+                await follow_by_share_short_url.finish(f"关注成功: {success_list[0]}")
+            elif fail_list:
+                await follow_by_share_short_url.finish(f"关注失败: {fail_list[0]}")
 
-            elif idType == 2:
-                success_list, fail_list = await follow_up_list(userID, [uid], msgType)
-                if success_list:
-                    await followByShareB23Url.finish(f"关注成功: {success_list[0]}")
-                elif fail_list:
-                    await followByShareB23Url.finish(f"关注失败: {fail_list[0]}")
-
-            elif idType == 3:
-                success_list, fail_list = await follow_telegram_list(userID, [uid], msgType)
-                if success_list:
-                    await followByShareB23Url.finish(f"关注成功: {success_list[0]}")
-                    
-                elif fail_list:           
-                    await followByShareB23Url.finish(f"关注失败: {fail_list[0]}")
+        elif id_type == 2:
+            success_list, fail_list = await follow_telegram_list(user_id, [target_uid], msg_type)
+            if success_list:
+                await follow_by_share_short_url.finish(f"关注成功: {success_list[0]}")
+                
+            elif fail_list:           
+                await follow_by_share_short_url.finish(f"关注失败: {fail_list[0]}")
         else:
-            await followByShareB23Url.finish(f"关注失败: 非法短链接{b23Url}")
+            await follow_by_share_short_url.finish(f"关注失败: 非法短链接{short_url}")
     except nonebot.exception.FinishedException:
         pass
+    except BiliInvalidShortUrl:
+        await follow_by_share_short_url.finish('关注失败: 非法或不支持的短链接')
     except Exception as _:
         ex_type, ex_val, _ = sys.exc_info()
-        logger.error(f'{__PLUGIN_NAME}【错误报告】\n解析短链接 <{b23Url}> 时发生错误\n错误类型: {ex_type}\n错误值: {ex_val}\n{traceback.format_exc()}')
-        await followByShareB23Url.finish('关注失败: 连接错误')
+        logger.error(f'{__PLUGIN_NAME}【错误报告】\n解析短链接 <{short_url}> 时发生错误\n错误类型: {ex_type}\n错误值: {ex_val}\n{traceback.format_exc()}')
+        await follow_by_share_short_url.finish('关注失败: 连接错误')
 
 helpCommand = on_command("help", permission=ALL_PERMISSION, aliases={'帮助'})
 @helpCommand.handle()
@@ -332,8 +331,10 @@ async def sendBroacast(event: MessageEvent):
     else:
         logger.debug(f'{__PLUGIN_NAME}公告文件不存在')
         await publicBroacast.finish("公告发送失败: 公告文件不存在") 
+
 require("nonebot_plugin_apscheduler")
 from nonebot_plugin_apscheduler import scheduler
+logger.debug(f'{__PLUGIN_NAME}注册定时任务')
 scheduler.add_job(check_bili_live, "interval", minutes=1, id="biliStream", misfire_grace_time=90)
-scheduler.add_job(check_up_update, "interval", minutes=1, id="biliUp", misfire_grace_time=90)
-scheduler.add_job(check_telegram_update, "interval", minutes=5, id="biliTele", misfire_grace_time=90)
+scheduler.add_job(check_up_update, "interval", minutes=5, id="biliUp", misfire_grace_time=90)
+scheduler.add_job(check_telegram_update, "interval", minutes=10, id="biliTele", misfire_grace_time=90)

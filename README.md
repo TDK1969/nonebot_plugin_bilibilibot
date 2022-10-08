@@ -7,7 +7,7 @@
 # nonebot-plugin-bilibilibot
 
 👾 _NoneBot bilibili通知插件_ 👾
-<p>version: 2.1.0</p>
+<p>version: 2.2.0</p>
     
 </div>
 
@@ -65,6 +65,18 @@
 
 # 更新日志
 [完整日志](https://github.com/TDK1969/nonebot_plugin_bilibilibot/blob/main/file/source/ChangeLog.md)
+- **ver 2.2.0**
+```
+1. 修改某些B站的接口,减少被接口风控的风险
+2. 可以使用ep_id, season_id和media_id对番剧进行关注,需要携带前两个字符
+```
+ep_id: https://www.bilibili.com/bangumi/play/**ep433947**
+
+season_id: https://www.bilibili.com/bangumi/play/**ss39431**
+
+media_id: https://www.bilibili.com/bangumi/media/**md28235123**
+
+
 - **ver 2.1.0**
 ```
 1. 将文件存储方式修改为数据库,取代原来的JSON文件存储,解决编码或异步的问题

@@ -9,13 +9,12 @@ from .config import Config
 from .exception import *
 global_config = get_driver().config
 config = Config.parse_obj(global_config)
-__PLUGIN_NAME = "[B站插件~数据库]"
-
+__PLUGIN_NAME = "[bilibilibot~数据库]"
 
 class BiliDatabase():
     def __init__(self) -> None:
         # 需要从config中获得
-        self.db_name = dirname(abspath(__file__)) + "/bilibili.db"
+        self.db_name = dirname(abspath(__file__)) + "/bilibili_2.db"
         self.conn = sqlite3.connect(self.db_name)
         self.init_database()
     
@@ -41,7 +40,7 @@ class BiliDatabase():
                 liver_uid VARCHAR(20) PRIMARY KEY NOT NULL,
                 liver_name VARCHAR(50) NOT NULL,
                 is_live TINYINT(1) DEFAULT 0 NOT NULL,
-                live_room VARCHAR(100) NOT NULL
+                live_room VARCHAR(30) NOT NULL
             )
             ''')
 
@@ -50,7 +49,8 @@ class BiliDatabase():
             (
                 season_id VARCHAR(20) PRIMARY KEY NOT NULL,
                 telegram_title VARCHAR(50) NOT NULL,
-                episode INT NOT NULL
+                episode INT NOT NULL,
+                is_finish TINYINT(1) DEFAULT 0 NOT NULL
             )
             ''')
 
@@ -130,7 +130,7 @@ class BiliDatabase():
                 1-群组:   group_id, group_name
                 2-up主:   up_uid, up_name, latest_update
                 3-主播:   liver_uid, liver_name, is_live, live_room
-                4-番剧:   season_id, telegram_title, episode
+                4-番剧:   season_id, telegram_title, episode, is_finish
 
         Returns:
             bool: 是否成功
@@ -142,7 +142,7 @@ class BiliDatabase():
             "INSERT INTO qq_group(group_id, group_name) VALUES (?, ?)",
             "INSERT INTO up(up_uid, up_name, latest_update) VALUES (?, ?, ?)",
             "INSERT INTO liver(liver_uid, liver_name, is_live, live_room) VALUES (?, ?, ?, ?)",
-            "INSERT INTO telegram(season_id, telegram_title, episode) VALUES (?, ?, ?)"
+            "INSERT INTO telegram(season_id, telegram_title, episode, is_finish) VALUES (?, ?, ?, ?)"
         ]
         #logger.info(f'信息表进行插入')
         
@@ -239,7 +239,7 @@ class BiliDatabase():
         sqls = [
             "SELECT up_uid, up_name, latest_update FROM up",
             "SELECT liver_uid, liver_name, is_live, live_room FROM liver",
-            "SELECT season_id, telegram_title, episode FROM telegram",
+            "SELECT season_id, telegram_title, episode FROM telegram WHERE is_finish IS FALSE",
             "SELECT user_id FROM qq_user",
             "SELECT group_id FROM qq_group"
         ]
@@ -394,13 +394,12 @@ class BiliDatabase():
             self.conn.commit()
             return True
         
-    def update_info(self, sql_type: int, uid: str, *args) -> bool:
+    def update_info(self, sql_type: int, *args) -> bool:
         '''更新up/主播/番剧信息
 
         Args:
             sql_type (int): 0-更新up;1-更新主播;2-更新番剧
-            uid (str): up/主播/番剧id
-            args     : up-整数时间戳;主播-True/False;番剧-整数集数
+            args     : up-整数时间戳,uid;主播-True/False, uid;番剧-整数集数, 是否完结, season_id
 
         Returns:
             bool: 是否成功
@@ -409,7 +408,7 @@ class BiliDatabase():
         sqls = [
             "UPDATE up SET latest_update = ? WHERE up_uid = ?",
             "UPDATE liver SET is_live = ? WHERE liver_uid = ?",
-            "UPDATE telegram SET episode = ? WHERE season_id = ?"
+            "UPDATE telegram SET episode = ?, is_finish = ? WHERE season_id = ?"
         ]
         assert 0 <= sql_type < 3, "索引长度错误"
 
@@ -417,7 +416,8 @@ class BiliDatabase():
         ##logger.info(f'更新信息表')
         
         try:
-            cur.execute(sqls[sql_type], (args[0], uid))
+            logger.debug(f"args = {args}")
+            cur.execute(sqls[sql_type], args)
         except Exception as e:
             ##logger.debug(f'更新信息表时发生错误:\n{e}')
             raise e
@@ -464,6 +464,9 @@ class BiliDatabase():
         '''
         dir_path = dirname(abspath(__file__)) + "/file/"
 
+        if not os.path.exists(dir_path + "user"):
+            return
+
         # 插入用户
         for json_file_name in os.listdir(dir_path + "user"):
             user_id = json_file_name.split(".")[0]
@@ -489,7 +492,7 @@ class BiliDatabase():
                     self.insert_relation(4, tele_uid, user_id)
             
             os.remove(dir_path + "user/" + json_file_name)
-
+        os.rmdir(dir_path + "user/")
             # delete file
         
         # 插入群组
@@ -516,7 +519,8 @@ class BiliDatabase():
                     tele_uid = tele.split()[1][:-1]
                     self.insert_relation(5, tele_uid, group_id)  
             
-            os.remove(dir_path + "group/" + json_file_name)      
+            os.remove(dir_path + "group/" + json_file_name) 
+        os.rmdir(dir_path + "group/")     
         # 插入up主
         for json_file_name in os.listdir(dir_path + "up"):
             up_uid = json_file_name.split(".")[0]
@@ -528,7 +532,8 @@ class BiliDatabase():
                 self.insert_info(2, up_uid, up_name, up_timestamp)
             
             os.remove(dir_path + "up/" + json_file_name)
-        
+        os.rmdir(dir_path + "up/")
+
         # 插入主播
         for json_file_name in os.listdir(dir_path + "stream"):
             liver_uid = json_file_name.split(".")[0]
@@ -538,6 +543,7 @@ class BiliDatabase():
             
             os.remove(dir_path + "stream/" + json_file_name)
         
+        os.rmdir(dir_path + "stream/")
         # 插入番剧
         for json_file_name in os.listdir(dir_path + "telegram"):
             tele_uid = json_file_name.split(".")[0]
@@ -546,6 +552,7 @@ class BiliDatabase():
                 self.insert_info(4, tele_uid, tele_info[0], tele_info[1])
             
             os.remove(dir_path + "telegram/" + json_file_name)
-
+        os.rmdir(dir_path + "telegram/")
+        
 bili_database = BiliDatabase()
-bili_database.get_from_json()
+#bili_database.get_from_json()
