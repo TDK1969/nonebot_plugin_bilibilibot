@@ -69,6 +69,7 @@
 ```
 1. 修改某些B站的接口,减少被接口风控的风险
 2. 可以使用ep_id, season_id和media_id对番剧进行关注,需要携带前两个字符
+3. 本次更新需要重置数据库,因此会丢失旧版本的关注数据,需要重新关注
 ```
 ep_id: https://www.bilibili.com/bangumi/play/**ep433947**
 
