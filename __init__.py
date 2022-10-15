@@ -14,6 +14,7 @@ from .biliVideo import *
 from .biliTelegram import *
 from .basicFunc import *
 from .rule import groupMessageRule, privateMessageRule
+from .bili_task import BiliTaskManager
 
 import os
 import json
@@ -112,7 +113,7 @@ async def listFollowingCommandHandler(event: Union[PrivateMessageEvent, GroupMes
                     textMsg += '关注的番剧\n'
                     for season_id in followed_telegram_list:
                         season_id, telegram_title, _ = bili_database.query_info(4, season_id[0])
-                        textMsg += '> ' + f"{telegram_title}(season_id: ss{season_id})" + '\n'
+                        textMsg += '> ' + f"{telegram_title}(season_id: {season_id})" + '\n'
                 
                 else:
                     textMsg += '无关注的番剧'

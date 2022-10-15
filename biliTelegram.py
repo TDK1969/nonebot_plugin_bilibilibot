@@ -134,8 +134,7 @@ async def unfollow_telegram(season_id: str, user_id: str, user_type: int) -> Tup
     Returns:
         Tuple[bool, str]: [是否成功, 信息]
     '''
-
-    if not season_id.isdigit():
+    if not season_id[2:].isdigit():
         return (False, season_id + "(错误参数)")
     
     try:

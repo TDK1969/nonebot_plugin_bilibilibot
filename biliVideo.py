@@ -11,6 +11,7 @@ from nonebot.log import logger
 from nonebot.adapters.onebot.v11 import MessageSegment
 from .basicFunc import *
 from .bili_client import bili_client
+from .bili_task import bili_task_manager
 
 __PLUGIN_NAME = "[bilibilibot~视频]"
 BASEURL = 'https://api.bilibili.com/x/space/arc/search?mid={}&ps=30&tid=0&pn=1&keyword=&order=pubdate&jsonp=jsonp'
@@ -32,28 +33,36 @@ async def check_up_update() -> None:
     schedBot = nonebot.get_bot()
     #assert status == True, "数据库发生错误"
     param_list = [[up_info[0], up_info[2]] for up_info in up_list]
+    check_up_list = bili_task_manager.get_up_check_update_list()
+    logger.debug(f"check up list = {check_up_list}")
     results = await asyncio.gather(
-        *[bili_client.get_latest_video(uid, latest_timestamp) for uid, latest_timestamp in param_list],
+        *[bili_client.get_latest_video(uid, latest_timestamp) for uid, latest_timestamp in check_up_list],
         return_exceptions=True
     )
     
-    for i in range(len(up_list)):
+    for i in range(len(check_up_list)):
         if isinstance(results[i], tuple):
             if results[i][0] is True:
-                logger.info(f'{__PLUGIN_NAME}检测到up主<{up_list[i][1]}>更新了视频')
-                textMsg = f"【B站动态】\n <{up_list[i][1]}> 更新了视频\n标题: {results[i][2]}\n链接: https://www.bilibili.com/video/{results[i][1]}"
-                bili_database.update_info(0, results[i][3], up_list[i][0])
+                up_uid = check_up_list[i][0]
+                up_name = bili_task_manager.up_list[up_uid]["up_name"]
 
-                user_list = bili_database.query_user_relation(0, up_list[i][0])
+                logger.info(f'{__PLUGIN_NAME}检测到up主<{up_name}>更新了视频')
+                textMsg = f"【B站动态】\n <{up_name}> 更新了视频\n标题: {results[i][2]}\n链接: https://www.bilibili.com/video/{results[i][1]}"
+                
+                bili_task_manager.update_up_info(up_uid, results[i][3])
+                #bili_database.update_info(0, results[i][3], up_uid)
+
+                #user_list = bili_database.query_user_relation(0, up_uid)
+                user_list = bili_task_manager.up_list[up_uid]["user_follower"]
                 for user_id in user_list:
                     await schedBot.send_msg(message=textMsg + MessageSegment.image(results[i][4]), user_id=user_id[0])
                 
-                group_list = bili_database.query_group_relation(0, up_list[i][0])
+                group_list = bili_task_manager.up_list[up_uid]["group_follower"]
                 for group_id in group_list:
                     await schedBot.send_msg(message=textMsg + MessageSegment.image(results[i][4]), group_id=group_id[0])
             
         elif isinstance(results[i], (BiliAPIRetCodeError, BiliStatusCodeError, BiliConnectionError)):
-            exception_msg = f'[错误报告]\n检测up主 <{up_list[i][1]}> 更新情况时发生错误\n错误类型: {type(results[i])}\n错误信息: {results[i]}'
+            exception_msg = f'[错误报告]\n检测up主 <{up_name}> 更新情况时发生错误\n错误类型: {type(results[i])}\n错误信息: {results[i]}'
             logger.error(f"[{__PLUGIN_NAME}]" + exception_msg)
 
 async def follow_up(uid: str, user_id: str, user_type: int) -> Tuple[bool, str]:
@@ -79,6 +88,19 @@ async def follow_up(uid: str, user_id: str, user_type: int) -> Tuple[bool, str]:
         result = bili_database.query_info(2, uid)
         
         # up信息不存在于数据库,对数据库进行更新
+        if uid not in bili_task_manager.up_list:
+            up_name, latest_timestamp = await bili_client.init_up_info(uid)
+
+            if up_name:
+                bili_task_manager.add_user_follower
+                bili_database.insert_info(2, uid, up_name, latest_timestamp)
+                bili_database.insert_relation(0 + user_type, uid, user_id)
+                logger.info(f"{__PLUGIN_NAME}用户/群 <{user_id}> 关注主播 <{up_name}> 成功")
+                return (True, up_name + f"(uid: {uid})")
+            else:
+                logger.info(f'{__PLUGIN_NAME}up({uid})不存在，请检查uid')
+                return (False, uid + "(uid错误)")
+
         if not result:
             up_name, latest_timestamp = await bili_client.init_up_info(uid)
 

@@ -114,7 +114,7 @@ class BiliDatabase():
         cur.execute("CREATE INDEX IF NOT EXISTS tele_index ON telegram_follower (season_id)")
         cur.execute("CREATE INDEX IF NOT EXISTS tele_user_index ON telegram_follower (user_id)")
         cur.execute("CREATE INDEX IF NOT EXISTS tele_group_index ON telegram_follower (group_id)")
-
+        
         logger.debug(f'数据库初始化完毕')
         
         cur.close()

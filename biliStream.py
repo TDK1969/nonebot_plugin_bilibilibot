@@ -31,14 +31,14 @@ async def check_bili_live() -> None:
     -------
     """
     liver_list = bili_database.query_all(1)
-    logger.debug(f'{__PLUGIN_NAME}主播数据库:{liver_list}')
+    
     sched_bot = nonebot.get_bot()
     
     results = await asyncio.gather(
         *[bili_client.get_live_status(liver_info[0], liver_info[3]) for liver_info in liver_list],
         return_exceptions=True
     )
-    logger.debug(f'{__PLUGIN_NAME}直播状态结果:{results}')
+    
     
     for i in range(len(liver_list)):
         if isinstance(results[i], tuple):
