@@ -84,14 +84,13 @@ async def listFollowingCommandHandler(event: Union[PrivateMessageEvent, GroupMes
                 followed_up_list = bili_database.query_group_relation(1, user_id)
                 followed_liver_list = bili_database.query_group_relation(3, user_id)
                 followed_telegram_list = bili_database.query_group_relation(5, user_id)
-            logger.debug(f'{__PLUGIN_NAME}\nup:{followed_up_list}\nliver:{followed_liver_list}\ntelegram{followed_telegram_list}')
             
             textMsg = ""
             if 'up主' in inputArgs:
                 if followed_up_list:
                     textMsg += '关注的up主:\n'
                     for up_uid in followed_up_list:
-                        up_uid, up_name, _ = bili_database.query_info(2, up_uid[0])
+                        up_uid, up_name, _ = bili_database.query_info(2, up_uid)
                         textMsg += '> ' + f"{up_name}(uid: {up_uid})" + '\n'
                         
                 else:
@@ -102,7 +101,7 @@ async def listFollowingCommandHandler(event: Union[PrivateMessageEvent, GroupMes
                 if followed_liver_list:
                     textMsg += '关注的主播:\n'
                     for liver_uid in followed_liver_list:
-                        liver_uid, liver_name, _, _ = bili_database.query_info(3, liver_uid[0])
+                        liver_uid, liver_name, _, _ = bili_database.query_info(3, liver_uid)
                         textMsg += '> ' + f"{liver_name}(uid: {liver_uid})" + '\n'
                 else:
                     textMsg += '无关注的主播\n'
@@ -112,8 +111,8 @@ async def listFollowingCommandHandler(event: Union[PrivateMessageEvent, GroupMes
                 if followed_telegram_list:
                     textMsg += '关注的番剧\n'
                     for season_id in followed_telegram_list:
-                        season_id, telegram_title, _ = bili_database.query_info(4, season_id[0])
-                        textMsg += '> ' + f"{telegram_title}(season_id: {season_id})" + '\n'
+                        season_id, telegram_title, _ = bili_database.query_info(4, season_id)
+                        textMsg += '> ' + f"{telegram_title}(season_id: ss{season_id})" + '\n'
                 
                 else:
                     textMsg += '无关注的番剧'

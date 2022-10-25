@@ -1,23 +1,16 @@
-import json
-from typing import Tuple, List, Union
+from typing import Tuple, List
 import sys
-import os
 import asyncio
 import traceback
-from unittest import result
 import nonebot
 from nonebot.log import logger
 from nonebot.adapters.onebot.v11 import MessageSegment
-from nonebot.adapters.onebot.v11.event import GroupMessageEvent, PrivateMessageEvent
 from .basicFunc import *
 from .exception import *
-import httpx
-from .db import bili_database
 from .bili_client import bili_client
+from .bili_task import bili_task_manager
+
 __PLUGIN_NAME = "[bilibilibot~番剧]"
-biliTeleInfoUrl = 'https://api.bilibili.com/pgc/web/season/section?season_id={}'
-GETSEASONIDAPI = 'https://api.bilibili.com/pgc/view/web/season?ep_id={}'
-GETEPISODESAPI = 'https://api.bilibili.com/pgc/web/season/section?season_id={}'
     
 async def check_telegram_update():
     """
@@ -32,38 +25,33 @@ async def check_telegram_update():
     -------
     """
     
-    telegram_list = bili_database.query_all(2)
+    telegram_list = list(bili_task_manager.telegram_list.values())
     sched_bot = nonebot.get_bot()
-    season_id_list = [[telegram[0], telegram[2]] for telegram in telegram_list]
     results = await asyncio.gather(
-        *[bili_client.get_telegram_latest_episode(season_id, episode) for season_id, episode in season_id_list],
+        *[bili_client.get_telegram_latest_episode(telegram_info["season_id"], telegram_info["episode"]) for telegram_info in telegram_list],
         return_exceptions=True
     )
 
     for i in range(len(telegram_list)):
         if isinstance(results[i], tuple):
             if results[i][0] is True:
-                logger.info(f'[{__PLUGIN_NAME}]检测到影视剧 <{telegram_list[i][1]}> 更新')
-                bili_database.update_info(2, results[i][1], results[i][5], telegram_list[i][0])
-                
+                logger.info(f'[{__PLUGIN_NAME}]检测到影视剧 <{telegram_list[i]["telegram_title"]}> 更新')
                 text_msg = "【B站动态】\n《{}》已更新第{}集\n标题: {}\n链接: {}\n".format(
-                        telegram_list[i][1], results[i][1], results[i][2], results[i][3]
+                        telegram_list[i]["telegram_title"], results[i][1], results[i][2], results[i][3]
                     )
                 cover_msg = MessageSegment.image(results[i][4])
                 reported_msg = text_msg + cover_msg
                 logger.info(f'[{__PLUGIN_NAME}]向关注用户发送更新通知')
 
                 # 通知用户
-                user_list = bili_database.query_user_relation(4, telegram_list[i][0])
-                for user in user_list:
-                    await sched_bot.send_msg(message=reported_msg, user_id=user[0])
-
-                group_list = bili_database.query_group_relation(4, telegram_list[i][0])
-                for group in group_list:
-                    await sched_bot.send_msg(message=reported_msg, group_id=group[0])
-        
+                user_list = telegram_list[i]["user_follower"]
+                await asyncio.gather(*[sched_bot.send_msg(message=reported_msg, user_id=user_id) for user_id in user_list])
+            
+                group_list = telegram_list[i]["group_follower"]
+                await asyncio.gather(*[sched_bot.send_msg(message=reported_msg, group_id=group_id) for group_id in group_list])
+            
         elif isinstance(results[i], (BiliAPIRetCodeError, BiliStatusCodeError, BiliConnectionError)):
-            exception_msg = f'[错误报告]\n检测番剧 <{telegram_list[i][1]}> 更新情况时发生错误\n错误类型: {type(results[i])}\n错误信息: {results[i]}'
+            exception_msg = f'[错误报告]\n检测番剧 <{telegram_list[i]["telegram_title"]}> 更新情况时发生错误\n错误类型: {type(results[i])}\n错误信息: {results[i]}'
             logger.error(f"[{__PLUGIN_NAME}]" + exception_msg)
         
 async def follow_telegram(id_prefix: str, telegram_id: int, user_id: str, user_type: int) -> Tuple[bool, str]:
@@ -90,21 +78,34 @@ async def follow_telegram(id_prefix: str, telegram_id: int, user_id: str, user_t
             return (False, telegram_id + "(番剧id错误)")
         
         season_id, telegram_title, episode, is_finish = res
-        telegram_info = bili_database.query_info(4, season_id)
-
-        # 如果数据库无番剧信息,则插入番剧信息
-        if not telegram_info:
-            bili_database.insert_info(4, season_id, telegram_title, episode, is_finish)
-
-        result1 = bili_database.query_specified_realtion(4 + user_type, user_id, season_id)
-        if result1:
-            logger.debug(f'[{__PLUGIN_NAME}]用户 <{user_id}> 已关注节目 <{telegram_title}>')
-            return (False, telegram_title + "(已关注)")
+        season_id = str(season_id)
+        logger.debug(f'{__PLUGIN_NAME}{bili_task_manager.telegram_list}')
         
-        bili_database.insert_relation(4 + user_type, season_id, user_id)
+        if season_id not in bili_task_manager.telegram_list:
+            logger.debug(f'{__PLUGIN_NAME}{season_id}不在任务列表中存在')
+            bili_task_manager.add_telegram_info(season_id, telegram_title, episode, is_finish)
+            if user_type == 0:
+                bili_task_manager.add_user_follower(2, season_id, user_id)
+            else:
+                bili_task_manager.add_group_follower(2, season_id, user_id)
+            
+            logger.info(f"[{__PLUGIN_NAME}]用户/群 <{user_id}> 关注番剧 <{telegram_title}> 成功")
+            return (True, telegram_title + f"(season_id: {season_id})")
+        
+        if user_type == 0 and user_id in bili_task_manager.telegram_list[season_id]["user_follower"] or \
+            user_type == 1 and user_id in bili_task_manager.telegram_list[season_id]["group_follower"]:
+            logger.debug(f'{__PLUGIN_NAME}番剧 <{bili_task_manager.telegram_list[season_id]["telegram_title"]}> 已关注')
+            return (False, season_id + "(已关注)")
+
+        logger.debug(f'{__PLUGIN_NAME}进行关注{season_id}')
+        
+        if user_type == 0:
+            bili_task_manager.add_user_follower(2, season_id, user_id)
+        else:
+            bili_task_manager.add_group_follower(2, season_id, user_id)
         logger.info(f"[{__PLUGIN_NAME}]用户/群 <{user_id}> 关注番剧 <{telegram_title}> 成功")
         return (True, telegram_title + f"(season_id: {season_id})")
-    
+ 
     except BiliAPI404Error:
         return (False, f"{id_prefix}{telegram_id}" + "(番剧id错误)")
     except (BiliConnectionError, BiliAPIRetCodeError, BiliStatusCodeError):
@@ -134,21 +135,27 @@ async def unfollow_telegram(season_id: str, user_id: str, user_type: int) -> Tup
     Returns:
         Tuple[bool, str]: [是否成功, 信息]
     '''
-    if not season_id[2:].isdigit():
+    if season_id[:2] != "ss" and not season_id[2:].isdigit():
         return (False, season_id + "(错误参数)")
     
+    season_id = season_id[2:]
+    logger.debug(f'{__PLUGIN_NAME}{bili_task_manager.telegram_list}')
+    
     try:
-        result = bili_database.query_specified_realtion(4 + user_type, user_id, season_id)
-        
-        # 处理未关注
-        if not result:
-            logger.info(f'[{__PLUGIN_NAME}]用户/群 <{user_id}> 未关注番剧 <{season_id}>')
+        if season_id not in bili_task_manager.telegram_list or \
+            user_type == 0 and user_id not in bili_task_manager.telegram_list[season_id]["user_follower"] or \
+            user_type == 1 and user_id not in bili_task_manager.telegram_list[season_id]["group_follower"]:
+            logger.info(f'{__PLUGIN_NAME}用户/群 <{user_id}> 未关注番剧 <{season_id}>')
             return (False, season_id + "(未关注)")
 
-        # 进行取关
-        bili_database.delete_relation(4 + user_type, user_id, season_id)
-        logger.info(f'[{__PLUGIN_NAME}]用户/群 <{user_id}> 取关番剧 <{season_id}> 成功')
-        return (True, bili_database.query_info(4, season_id)[1]  + f"(season_id: {season_id})") 
+        telegram_title = bili_task_manager.telegram_list[season_id]["telegram_title"]
+        if user_type == 0:
+            bili_task_manager.remove_user_follower(2, season_id, user_id)
+        else:
+            bili_task_manager.remove_group_follower(2, season_id, user_id)
+        
+        return (True, telegram_title + f"(season_id: ss{season_id})")
+        
     except BiliDatebaseError:
         ex_type, ex_val, _ = sys.exc_info()
         exception_msg = f'【错误报告】\n取关番剧 <{season_id}> 时数据库发生错误\n错误类型: {ex_type}\n错误值: {ex_val}\n'
@@ -185,7 +192,7 @@ async def follow_telegram_list(
     logger.debug(f'{__PLUGIN_NAME}valid list = {valid_telegram_id_list}')
     
     results = await asyncio.gather(
-        *[follow_telegram(telegram_id[:2], int(telegram_id[2:]), user_id, user_type) for telegram_id in valid_telegram_id_list],
+        *[follow_telegram(telegram_id[:2], int(telegram_id[2:]), str(user_id), user_type) for telegram_id in valid_telegram_id_list],
         return_exceptions=True
     )
 
@@ -216,7 +223,7 @@ async def unfollow_telegram_list(
     fail_list = []
 
     for season_id in season_id_list:
-        isSuccess, s = await unfollow_telegram(season_id, user_id, user_type)
+        isSuccess, s = await unfollow_telegram(season_id, str(user_id), user_type)
         if isSuccess:
             success_list.append(s)
         else:

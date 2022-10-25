@@ -257,7 +257,7 @@ class BiliDatabase():
             result = cur.fetchall()
             return result
 
-    def query_user_relation(self, sql_type: int, target_id: str) -> List[Tuple]:
+    def query_user_relation(self, sql_type: int, target_id: str) -> List[str]:
         '''查询个人相关的关注
 
         Args:
@@ -265,7 +265,7 @@ class BiliDatabase():
             target_id (str): 用户/up/主播/番剧的id
 
         Returns:
-            List[Tuple]: 查询结果列表
+            List[str]: 查询结果列表
         '''
 
         sqls = [
@@ -286,8 +286,12 @@ class BiliDatabase():
             ##logger.error(f'查询个人关注时发生错误:\n{e}')
             raise BiliDatebaseError(f"数据库查询个人关注时发生错误:{e.args[0]}")
         else:
-            result = cur.fetchall()
-            return result
+            temp = cur.fetchall()
+            if not temp:
+                return []
+            else:
+                result = [i[0] for i in temp if i[0] is not None]
+                return result
     
     def query_group_relation(self, sql_type: int, target_id: str) -> List[Tuple]:
         '''查询群相关的关注
@@ -318,7 +322,8 @@ class BiliDatabase():
             ##logger.error(f'查询群组关注时发生错误:\n{e}')
             raise BiliDatebaseError(f"数据库查询群组关注时发生错误:{e.args[0]}")
         else:
-            result = cur.fetchall()
+            temp = cur.fetchall()
+            result = [i[0] for i in temp]
             return result
 
     def query_specified_realtion(self, sql_type: int, user_id: str, target_id: str) -> bool:
@@ -416,7 +421,6 @@ class BiliDatabase():
         ##logger.info(f'更新信息表')
         
         try:
-            logger.debug(f"args = {args}")
             cur.execute(sqls[sql_type], args)
         except Exception as e:
             ##logger.debug(f'更新信息表时发生错误:\n{e}')
@@ -555,4 +559,3 @@ class BiliDatabase():
         os.rmdir(dir_path + "telegram/")
         
 bili_database = BiliDatabase()
-#bili_database.get_from_json()

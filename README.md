@@ -7,7 +7,7 @@
 # nonebot-plugin-bilibilibot
 
 👾 _NoneBot bilibili通知插件_ 👾
-<p>version: 2.2.0</p>
+<p>version: 2.2.1</p>
     
 </div>
 
@@ -65,6 +65,11 @@
 
 # 更新日志
 [完整日志](https://github.com/TDK1969/nonebot_plugin_bilibilibot/blob/main/file/source/ChangeLog.md)
+- **ver 2.2.1**
+```
+1. 对应用层和数据库层进行解耦
+```
+
 - **ver 2.2.0**
 ```
 1. 修改某些B站的接口,减少被接口风控的风险
@@ -84,10 +89,6 @@ media_id: https://www.bilibili.com/bangumi/media/md28235123, 中的**md28235123*
 2. 适配Nonebot v2.0.0-beta.5
 ```
 
-- **ver 2.0.5**
-```
-1. 网络通信修改为使用httpx使用异步通信
-```
 
 # 特别鸣谢
 - 感谢[@0w0w0](https://github.com/a0w0w0)帮助测试

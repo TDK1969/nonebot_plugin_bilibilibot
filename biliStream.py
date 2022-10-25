@@ -1,23 +1,15 @@
-import json
 from typing import Tuple, List
 import sys
 import traceback
 import nonebot
 from nonebot.log import logger
 from nonebot.adapters.onebot.v11 import MessageSegment
-from nonebot.adapters.onebot.v11.event import GroupMessageEvent, PrivateMessageEvent
 from .basicFunc import *
-from .db import bili_database
 from .exception import *
-from random import choice
 import asyncio
 from .bili_client import bili_client
-
+from .bili_task import bili_task_manager
 __PLUGIN_NAME = "[bilibilibot~直播]"
-BASEURL = 'https://api.bilibili.com/x/space/arc/search?mid={}&ps=30&tid=0&pn=1&keyword=&order=pubdate&jsonp=jsonp'
-USERINFOURL = 'https://api.bilibili.com/x/space/acc/info?mid={}&jsonp=jsonp'
-LIVEINFOURL = 'https://api.live.bilibili.com/xlive/web-room/v2/index/getRoomPlayInfo?room_id={}&protocol=0,1&format=0,1,2&codec=0,1&qn=0&platform=web&ptype=8'
-
 async def check_bili_live() -> None:
     """
     @description  :
@@ -30,37 +22,40 @@ async def check_bili_live() -> None:
     @Returns  :
     -------
     """
-    liver_list = bili_database.query_all(1)
+    liver_list = list(bili_task_manager.liver_list.values())
     
     sched_bot = nonebot.get_bot()
     
-    results = await asyncio.gather(
+    """results = await asyncio.gather(
         *[bili_client.get_live_status(liver_info[0], liver_info[3]) for liver_info in liver_list],
         return_exceptions=True
+    )"""
+
+    results = await asyncio.gather(
+        *[bili_client.get_live_status(liver_info["liver_uid"], liver_info["room_id"]) for liver_info in liver_list],
+        return_exceptions=True
     )
-    
-    
     for i in range(len(liver_list)):
         if isinstance(results[i], tuple):
-            if results[i][0] and not liver_list[i][2]:
-                logger.info(f'[{__PLUGIN_NAME}]检测到主播 <{liver_list[i][1]}> 已开播！')
-                text_msg = '【直播动态】\n<{}>正在直播!\n标题: {}\n链接: {}'.format(liver_list[i][1], results[i][1], f"https://live.bilibili.com/{liver_list[i][3]}")
-                
+            if results[i][0] and not liver_list[i]["is_live"]:
+                logger.info(f'[{__PLUGIN_NAME}]检测到主播 <{liver_list[i]["liver_name"]}> 已开播！')
+                text_msg = '【直播动态】\n<{}>正在直播!\n标题: {}\n链接: {}'.format(liver_list[i]["liver_name"], results[i][1], f"https://live.bilibili.com/{liver_list[i]['room_id']}")
+                reported_msg = text_msg + MessageSegment.image(results[i][2])
                 logger.info(f'[{__PLUGIN_NAME}]向粉丝发送开播通知')
-                bili_database.update_info(1, 1, liver_list[i][0])
+                bili_task_manager.update_liver_info(liver_list[i]["liver_uid"], True)
+                #bili_database.update_info(1, 1, liver_list[i][0])
 
-                user_list = bili_database.query_user_relation(2, liver_list[i][0])
-                for user in user_list:
-                    await sched_bot.send_msg(message=text_msg + MessageSegment.image(results[i][2]), user_id=user[0])
-                
-                group_list = bili_database.query_group_relation(2, liver_list[i][0])
-                for group in group_list:
-                    await sched_bot.send_msg(message=text_msg + MessageSegment.image(results[i][2]), group_id=group[0])
-            elif not results[i][0] and liver_list[i][2]:
-                logger.info(f"[{__PLUGIN_NAME}]检测到主播 <{liver_list[i][1]}> 已下播")
-                bili_database.update_info(1, 0, liver_list[i][0])
+                user_list = liver_list[i]["user_follower"]
+                await asyncio.gather(*[sched_bot.send_msg(message=reported_msg, user_id=user_id) for user_id in user_list])
+                group_list = liver_list[i]["group_follower"]
+                await asyncio.gather(*[sched_bot.send_msg(message=reported_msg, group_id=group_id) for group_id in group_list])
+
+            elif not results[i][0] and liver_list[i]["is_live"]:
+                logger.info(f'[{__PLUGIN_NAME}]检测到主播 <{liver_list[i]["liver_name"]}> 已下播')
+                bili_task_manager.update_liver_info(liver_list[i]["liver_uid"], False)
+                #bili_database.update_info(1, 0, liver_list[i][0])
         elif isinstance(results[i], (BiliAPIRetCodeError, BiliStatusCodeError, BiliConnectionError)):
-            exception_msg = f'[错误报告]\n检测主播 <{liver_list[i][1]}> 开播情况时发生错误\n错误类型: {type(results[i])}\n错误信息: {results[i]}'
+            exception_msg = f'[错误报告]\n检测主播 <{liver_list[i]["liver_name"]}> 开播情况时发生错误\n错误类型: {type(results[i])}\n错误信息: {results[i]}'
             logger.error(f"[{__PLUGIN_NAME}]" + exception_msg)
     
 async def follow_liver(uid: str, user_id: str, user_type: int) -> Tuple[bool, str]:
@@ -80,31 +75,31 @@ async def follow_liver(uid: str, user_id: str, user_type: int) -> Tuple[bool, st
         return (False, uid + "(错误参数)")
     uid = str(int(uid))
     try:
-        result = bili_database.query_info(3, uid)
-        
-        if not result:
-            # 主播在数据库中无信息,进行数据库更新
-            liver_name, room_url = await bili_client.init_liver_info(uid)
-        
-            if liver_name and room_url:
-                bili_database.insert_info(3, uid, liver_name, False, room_url)
-                bili_database.insert_relation(2 + user_type, uid, user_id)
-                logger.info(f"{__PLUGIN_NAME}用户/群 <{user_id}> 关注主播 <{liver_name}> 成功")
-                return (True, liver_name + f"(uid: {uid})")
-            elif liver_name:
-                logger.debug(f'{__PLUGIN_NAME}主播 <{liver_name}>未开通直播间')
-                return (False, uid + "(该用户未开通直播间)")
+        if uid not in bili_task_manager.liver_list:
+            liver_name, room_id = await bili_client.init_liver_info(uid)
+            
+            bili_task_manager.add_liver_info(uid, liver_name, False, room_id)
+            if user_type == 0:
+                bili_task_manager.add_user_follower(1, uid, user_id)
             else:
-                logger.debug(f'{__PLUGIN_NAME}主播 <{uid}> 不存在')
-                return (False, uid + "(非法uid)")
+                bili_task_manager.add_group_follower(1, uid, user_id)
+            #bili_database.insert_relation(2 + user_type, uid, user_id)
+
+            logger.info(f"{__PLUGIN_NAME}用户/群 <{user_id}> 关注主播 <{liver_name}> 成功")
+            return (True, liver_name + f"(uid: {uid})")
         
-        if bili_database.query_specified_realtion(2 + user_type, user_id, uid):
-            logger.debug(f'{__PLUGIN_NAME}主播 <{result[1]}> 已关注')
+        if user_type == 0 and user_id in bili_task_manager.liver_list[uid]["user_follower"] or \
+            user_type == 1 and user_id in bili_task_manager.liver_list[uid]["group_follower"]:
+            logger.debug(f'{__PLUGIN_NAME}主播 <{bili_task_manager.liver_list[uid]["liver_name"]}> 已关注')
             return (False, uid + "(已关注)")
-   
-        bili_database.insert_relation(2 + user_type, uid, user_id)
-        logger.info(f"{__PLUGIN_NAME}用户/群 <{user_id}> 关注主播 <{result[1]}> 成功")
-        return (True, result[1] + f"(uid: {uid})")
+
+        if user_type == 0:
+            bili_task_manager.add_user_follower(1, uid, user_id)
+        elif user_type == 1:
+            bili_task_manager.add_group_follower(1, uid, user_id)
+
+        logger.info(f"{__PLUGIN_NAME}用户/群 <{user_id}> 关注主播 <{bili_task_manager.liver_list[uid]['liver_name']}> 成功")
+        return (True, bili_task_manager.liver_list[uid]["liver_name"] + f"(uid: {uid})")
     except (BiliConnectionError, BiliAPIRetCodeError, BiliStatusCodeError):
         ex_type, ex_val, _ = sys.exc_info()
         exception_msg = f'【错误报告】\n获取主播 <{uid}> B站信息发生错误\n错误类型: {ex_type}\n错误值: {ex_val}\n'
@@ -138,15 +133,22 @@ async def unfollower_liver(uid: str, user_id: str, user_type: int) -> Tuple[bool
         logger.error(f'{__PLUGIN_NAME}存在错误参数 <{uid}>')
         return (False, uid + "(错误参数)")
     try:
-        result = bili_database.query_specified_realtion(2 + user_type, user_id, uid)
-        if result:
-            liver_info = bili_database.query_info(3, uid)
-            bili_database.delete_relation(2 + user_type, user_id, uid)
-            # 如果没人关注,删除主播
-            return (True, liver_info[1] + f"(uid: {uid})")
-        else:
-            logger.debug(f'{__PLUGIN_NAME}用户 <{user_id}> 未关注主播<{uid}>')
+        # 处理未关注
+        if uid not in bili_task_manager.liver_list or \
+            user_type == 0 and user_id not in bili_task_manager.liver_list[uid]["user_follower"] or \
+            user_type == 1 and user_id not in bili_task_manager.liver_list[uid]["group_follower"]:
+            logger.info(f'{__PLUGIN_NAME}用户/群 <{user_id}> 未关注主播 <{uid}>')
             return (False, uid + "(未关注)")
+
+        # 进行取关
+        liver_name = bili_task_manager.liver_list[uid]["liver_name"]
+        if user_type == 0:
+            bili_task_manager.remove_user_follower(1, uid, user_id)
+        else:
+            bili_task_manager.remove_group_follower(1, uid, user_id)
+        
+        return (True, liver_name + f"(uid: {uid})")
+        
     except BiliDatebaseError:
         ex_type, ex_val, _ = sys.exc_info()
         exception_msg = f'【错误报告】\n取关主播 <{uid}> 时数据库发生错误\n错误类型: {ex_type}\n错误值: {ex_val}\n'

@@ -1,7 +1,6 @@
 from typing import List
-
-from BiliBot.src.plugins.nonebot_plugin_bilibilibot.exception import BiliDatebaseError
 from .db import bili_database
+from .exception import BiliDatebaseError
 from nonebot.log import logger
 from random import randint
 
@@ -148,20 +147,20 @@ class BiliTaskManager():
             logger.error(exception_msg)
             return False
     
-    def add_user_follower(self, target_type: int, target_id: str, group_id: str) -> bool:
+    def add_user_follower(self, target_type: int, target_id: str, user_id: str) -> bool:
         '''_summary_
 
         Args:
             target_type (int): 0-up主;1-主播;2-番剧
             target_id (str): up主/主播/番剧的id 
-            group_id (str): 关注者的id
+            user_id (str): 关注者的id
 
         Returns:
             bool: 是否成功
         '''
         # 写入数据库,如果不存在于缓存,则从数据库写入缓存
         try:
-            bili_database.insert_relation(2 * target_type, target_id, group_id)
+            bili_database.insert_relation(2 * target_type, target_id, user_id)
 
             if target_type == 0:
                 if target_id not in self.up_list:
@@ -174,7 +173,7 @@ class BiliTaskManager():
                         "group_follower": set(bili_database.query_group_relation(0, target_id))
                     }
                 else:
-                    self.up_list[target_id]["user_follower"].add(group_id)
+                    self.up_list[target_id]["user_follower"].add(user_id)
             elif target_type == 1 :
                 if target_id not in self.liver_list:
                     _, liver_name, is_live, room_id = bili_database.query_info(3, target_id)
@@ -187,7 +186,7 @@ class BiliTaskManager():
                         "group_follower": set(bili_database.query_group_relation(2, target_id))
                     }
                 else:
-                    self.liver_list[target_id]["user_follower"].add(group_id)
+                    self.liver_list[target_id]["user_follower"].add(user_id)
             elif target_type == 2:
                 if target_id not in self.telegram_list:
                     _, telegram_title, episode = bili_database.query_info(4, target_id)
@@ -199,11 +198,11 @@ class BiliTaskManager():
                         "group_follower": set(bili_database.query_group_relation(4, target_id))
                     }
                 else:
-                    self.telegram_list[target_id]["user_follower"].add(group_id)
+                    self.telegram_list[target_id]["user_follower"].add(user_id)
             
             return True
         except BiliDatebaseError as e:
-            exception_msg = f'【错误报告】\n用户<{group_id}>关注<{target_id}>时数据库发生错误\n错误信息: {e}\n'
+            exception_msg = f'【错误报告】\n用户<{user_id}>关注<{target_id}>时数据库发生错误\n错误信息: {e}\n'
             logger.error(exception_msg)
             return False
 
@@ -332,6 +331,90 @@ class BiliTaskManager():
             logger.error(exception_msg)
             return False
 
+    def add_up_info(self, up_uid: str, up_name: str, latest_timestamp: int) -> bool:
+        '''向任务管理器以及数据库中增加up信息
+
+        Args:
+            up_uid (str): up的uid
+            up_name (str): up的用户名
+            latest_timestamp (int): 最新视频的时间戳
+
+        Returns:
+            bool: 是否成功
+        '''
+        try:
+            if not bili_database.query_info(2, up_uid):
+                bili_database.insert_info(2, up_uid, up_name, latest_timestamp)
+            self.up_list[up_uid] = {
+                "uid": up_uid,
+                "up_name": up_name, 
+                "latest_timestamop": latest_timestamp,
+                "user_follower": set(bili_database.query_user_relation(0, up_uid)),
+                "group_follower": set(bili_database.query_group_relation(0, up_uid)),
+                "next_update_check": self.__up_update_check_ptr__
+            }
+            return True
+        except BiliDatebaseError as e:
+            exception_msg = f'【错误报告】\n创建up主<{up_uid}>信息时数据库发生错误\n错误信息: {e}\n'
+            logger.error(exception_msg)
+            return False
+    
+    def add_liver_info(self, liver_uid: str, liver_name: str, is_live: bool, room_id: str) -> bool:
+        '''向任务管理器以及数据库中增加主播信息
+
+        Args:
+            liver_uid (str): 主播的uid
+            liver_name (str): 主播的用户名
+            is_live (bool): 是否正在直播
+            room_id (str): 房间id
+
+        Returns:
+            bool: 是否成功
+        '''
+        try:
+            if not bili_database.query_info(3, liver_uid):
+                bili_database.insert_info(3, liver_uid, liver_name, is_live, room_id)
+            self.liver_list[liver_uid] = {
+                "liver_uid": liver_uid, 
+                "liver_name": liver_name,
+                "is_live": is_live,
+                "room_id": room_id,
+                "user_follower": set(bili_database.query_user_relation(2, liver_uid)),
+                "group_follower": set(bili_database.query_group_relation(2, liver_uid))
+            }
+            return True
+        except BiliDatebaseError as e:
+            exception_msg = f'【错误报告】\n创建主播<{liver_uid}>信息时数据库发生错误\n错误信息: {e}\n'
+            logger.error(exception_msg)
+            return False
+    
+    def add_telegram_info(self, season_id: str, telegram_title: str, episode: int, is_finish: bool) -> bool:
+        '''向任务管理器以及数据库中增加番剧信息
+
+        Args:
+            season_id (str): 番剧的season_id
+            telegram_title (str): 番剧名
+            episode (int): 最新集数
+            is_finish (bool): 是否完结
+
+        Returns:
+            bool: 是否成功
+        '''
+        try:
+            if not bili_database.query_info(4, season_id): 
+                bili_database.insert_info(4, season_id, telegram_title, episode, is_finish)
+            self.telegram_list[season_id] = {
+                "season_id": season_id,
+                "telegram_title": telegram_title,
+                "episode": episode,
+                "user_follower": set(bili_database.query_user_relation(4, season_id)),
+                "group_follower": set(bili_database.query_group_relation(4, season_id))
+            }
+            return True
+        except BiliDatebaseError as e:
+            exception_msg = f'【错误报告】\n创建番剧<{season_id}>信息时数据库发生错误\n错误信息: {e}\n'
+            logger.error(exception_msg)
+            return False
     
 
             
