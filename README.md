@@ -65,6 +65,12 @@
 
 # 更新日志
 [完整日志](https://github.com/TDK1969/nonebot_plugin_bilibilibot/blob/main/file/source/ChangeLog.md)
+- **ver 2.2.2**
+```
+1. 解决由于sqlite版本不同导致的bug
+2. 解决番剧更新重复推送的问题
+```
+
 - **ver 2.2.1**
 ```
 1. 对应用层和数据库层进行解耦
