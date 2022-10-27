@@ -7,7 +7,7 @@
 # nonebot-plugin-bilibilibot
 
 👾 _NoneBot bilibili通知插件_ 👾
-<p>version: 2.2.1</p>
+<p>version: 2.2.2</p>
     
 </div>
 
