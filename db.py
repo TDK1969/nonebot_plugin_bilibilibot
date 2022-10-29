@@ -25,6 +25,13 @@ class BiliDatabase():
         cur = self.conn.cursor()
         logger.debug(f'初始化数据库')
         
+
+        cur.execute('''CREATE TABLE IF NOT EXISTS bili_sys
+            (
+                is_dynamic_init DEFAULT 0 NOT NULL
+            )
+            ''')
+        
         #创建up表   
         cur.execute('''CREATE TABLE IF NOT EXISTS up
             (
@@ -33,7 +40,6 @@ class BiliDatabase():
                 latest_update INT NOT NULL
             )
             ''')
-
         # 创建liver表
         cur.execute('''CREATE TABLE IF NOT EXISTS liver
             (
@@ -51,6 +57,16 @@ class BiliDatabase():
                 telegram_title VARCHAR(50) NOT NULL,
                 episode INT NOT NULL,
                 is_finish TINYINT(1) DEFAULT 0 NOT NULL
+            )
+            ''')
+        
+        #创建动态表   
+        cur.execute('''CREATE TABLE IF NOT EXISTS dynamic
+            (
+                uid VARCHAR(20) PRIMARY KEY NOT NULL,
+                u_name VARCHAR(50) NOT NULL,
+                pin_id_str VARCHAR(25) NOT NULL,
+                latest_timestamp INT NOT NULL
             )
             ''')
 
@@ -115,6 +131,16 @@ class BiliDatabase():
         cur.execute("CREATE INDEX IF NOT EXISTS tele_user_index ON telegram_follower (user_id)")
         cur.execute("CREATE INDEX IF NOT EXISTS tele_group_index ON telegram_follower (group_id)")
         
+        # 创建关注动态表
+        cur.execute('''CREATE TABLE IF NOT EXISTS dynamic_follower
+            (
+                id INTERGER PRIMARY KEY,
+                uid VARCHAR(20) NOT NULL,
+                user_id VARCHAR(20),
+                group_id VARCHAR(20)
+            )
+            ''')
+
         logger.debug(f'数据库初始化完毕')
         
         cur.close()
@@ -124,13 +150,14 @@ class BiliDatabase():
         '''插入信息表的通用操作
 
         Args:
-            type (int): 0-用户;1-群组;2-up;3-主播;4-番剧
+            type (int): 0-用户;1-群组;2-up;3-主播;4-番剧;5-动态
             args: 
                 0-用户:   user_id, user_name
                 1-群组:   group_id, group_name
                 2-up主:   up_uid, up_name, latest_update
                 3-主播:   liver_uid, liver_name, is_live, live_room
                 4-番剧:   season_id, telegram_title, episode, is_finish
+                5-动态:   uid, u_name, pin_id_str, latest_timestamp
 
         Returns:
             bool: 是否成功
@@ -143,6 +170,7 @@ class BiliDatabase():
             "INSERT INTO up(up_uid, up_name, latest_update) VALUES (?, ?, ?)",
             "INSERT INTO liver(liver_uid, liver_name, is_live, live_room) VALUES (?, ?, ?, ?)",
             "INSERT INTO telegram(season_id, telegram_title, episode, is_finish) VALUES (?, ?, ?, ?)"
+            "INSERT INTO dynamic(uid, u_name, pin_id_str, latest_timestamp) VALUES (?, ?, ?, ?)"
         ]
         #logger.info(f'信息表进行插入')
         
@@ -163,7 +191,7 @@ class BiliDatabase():
         '''插入关注表
 
         Args:
-            type (int): 0-个人关注up;1-群关注up;2-个人关注主播;3-群关注主播;4-个人关注番剧;5-群关注番剧
+            type (int): 0-个人关注up;1-群关注up;2-个人关注主播;3-群关注主播;4-个人关注番剧;5-群关注番剧;6-个人关注动态;7-群关注动态
             uid (str): 被关注者的id
             follower_id (str): 粉丝的id
 
@@ -178,10 +206,12 @@ class BiliDatabase():
             "INSERT INTO liver_follower(id, liver_uid, group_id) VALUES (NULL, ?, ?)",
             "INSERT INTO telegram_follower(id, season_id, user_id) VALUES (NULL, ?, ?)",
             "INSERT INTO telegram_follower(id, season_id, group_id) VALUES (NULL, ?, ?)",
+            "INSERT INTO dynamic_follower(id, uid, user_id) VALUES (NULL, ?, ?)",
+            "INSERT INTO dynamic_follower(id, uid, group_id) VALUES (NULL, ?, ?)"
         ]
         cur = self.conn.cursor()
         
-        assert 0 <= sql_type < 6, "索引长度错误"
+        assert 0 <= sql_type < len(sqls), "索引长度错误"
         #logger.info(f'关注表进行插入')
         try:
             cur.execute(sqls[sql_type], (uid, follower_id))
@@ -200,8 +230,8 @@ class BiliDatabase():
         '''查询信息表通用操作
 
         Args:
-            sql_type (int): 0-用户;1-群组;2-up;3-主播;4-番剧
-            target_id (str): up/主播/番剧/用户/群的id
+            sql_type (int): 0-用户;1-群组;2-up;3-主播;4-番剧;5-动态
+            target_id (str): up/主播/番剧/用户/群/动态发布者的id
 
         Returns:
             Tuple: 查询结果
@@ -212,9 +242,10 @@ class BiliDatabase():
             "SELECT group_id, group_name FROM qq_group WHERE group_id = ?",
             "SELECT up_uid, up_name, latest_update FROM up WHERE up_uid = ?",
             "SELECT liver_uid, liver_name, is_live, live_room FROM liver WHERE liver_uid = ?",
-            "SELECT season_id, telegram_title, episode FROM telegram WHERE season_id = ?"
+            "SELECT season_id, telegram_title, episode FROM telegram WHERE season_id = ?",
+            "SELECT uid, u_name, pin_id_str, latest_timestamp FROM dynamic WHERE uid = ?"
         ]
-        assert 0 <= sql_type < 5, "索引长度错误"
+        assert 0 <= sql_type < len(sqls), "索引长度错误"
         #logger.info(f'查询信息表中{target_id}的信息')
         
         try:
@@ -230,7 +261,7 @@ class BiliDatabase():
         '''获得所有的up/主播/番剧以进行更新检查
 
         Args:
-            sql_type (int): 0-up;1-主播;2-番剧;3-用户;4-群组
+            sql_type (int): 0-up;1-主播;2-番剧;3-用户;4-群组;5-动态
 
         Returns:
             List[Tuple]: 查询结果
@@ -241,10 +272,11 @@ class BiliDatabase():
             "SELECT liver_uid, liver_name, is_live, live_room FROM liver",
             "SELECT season_id, telegram_title, episode FROM telegram WHERE is_finish IS FALSE",
             "SELECT user_id FROM qq_user",
-            "SELECT group_id FROM qq_group"
+            "SELECT group_id FROM qq_group",
+            "SELECT uid, u_name, pin_id_str, latest_timestamp FROM dynamic"
         ]
         
-        assert 0 <= sql_type < 5, "索引长度错误"
+        assert 0 <= sql_type < len(sqls), "索引长度错误"
         cur = self.conn.cursor()
 
         try:
@@ -261,8 +293,12 @@ class BiliDatabase():
         '''查询个人相关的关注
 
         Args:
-            sql_type (int): 0-关注up的所有用户;1-用户关注的所有up;2-关注主播的所有用户;3-用户关注的所有主播;4-关注番剧的所有用户;5-用户关注的所有番剧
-            target_id (str): 用户/up/主播/番剧的id
+            sql_type (int): 
+            0-关注up的所有用户;1-用户关注的所有up;
+            2-关注主播的所有用户;3-用户关注的所有主播;
+            4-关注番剧的所有用户;5-用户关注的所有番剧;
+            6-关注动态主的所有用户;7-用户关注的所有动态主
+            target_id (str): 用户/up/主播/番剧/动态主的id
 
         Returns:
             List[str]: 查询结果列表
@@ -275,8 +311,10 @@ class BiliDatabase():
             "SELECT liver_uid FROM liver_follower WHERE user_id = ?",
             "SELECT user_id FROM telegram_follower WHERE season_id = ?",
             "SELECT season_id FROM telegram_follower WHERE user_id = ?"
+            "SELECT user_id FROM dynamic_follower WHERE uid = ?",
+            "SELECT uid FROM dynamic_follower WHERE user_id = ?"
         ]
-        assert 0 <= sql_type < 6, "索引长度错误"
+        assert 0 <= sql_type < len(sqls), "索引长度错误"
 
         cur = self.conn.cursor()
         ##logger.info(f'查询个人关注')
@@ -297,7 +335,11 @@ class BiliDatabase():
         '''查询群相关的关注
 
         Args:
-            sql_type (int): 0-关注up的所有群;1-群关注的所有up;2-关注主播的所有群;3-群关注的所有主播;4-关注番剧的所有群;5-群关注的所有番剧
+            sql_type (int): 
+            0-关注up的所有群;1-群关注的所有up;
+            2-关注主播的所有群;3-群关注的所有主播;
+            4-关注番剧的所有群;5-群关注的所有番剧;
+            6-关注动态主的所有群;7-群关注的所有动态主
             target_id (str): 群/up/主播/番剧的id
 
         Returns:
@@ -310,9 +352,11 @@ class BiliDatabase():
             "SELECT group_id FROM liver_follower WHERE liver_uid = ?",
             "SELECT liver_uid FROM liver_follower WHERE group_id = ?",
             "SELECT group_id FROM telegram_follower WHERE season_id = ?",
-            "SELECT season_id FROM telegram_follower WHERE group_id = ?"
+            "SELECT season_id FROM telegram_follower WHERE group_id = ?",
+            "SELECT group_id FROM dynamic_follower WHERE uid = ?",
+            "SELECT uid FROM dynamic_follower WHERE group_id = ?"
         ]
-        assert 0 <= sql_type < 6, "索引长度错误"
+        assert 0 <= sql_type < len(sqls), "索引长度错误"
 
         cur = self.conn.cursor()
         ##logger.info(f'查询群组关注')
@@ -323,16 +367,19 @@ class BiliDatabase():
             raise BiliDatebaseError(f"数据库查询群组关注时发生错误:{e.args[0]}")
         else:
             temp = cur.fetchall()
-            result = [i[0] for i in temp]
-            return result
+            if not temp:
+                return []
+            else:
+                result = [i[0] for i in temp if i[0] is not None]
+                return result
 
     def query_specified_realtion(self, sql_type: int, user_id: str, target_id: str) -> bool:
         '''查询一对一的关注
 
         Args:
-            sql_type (int): 0 个人-up;1 群组-up;2 个人-主播;3 群组-主播;4 个人-番剧;5 群组-番剧
+            sql_type (int): 0 个人-up;1 群组-up;2 个人-主播;3 群组-主播;4 个人-番剧;5 群组-番剧;6 个人-动态;7 群组-动态
             user_id (str): 用户/群组id
-            target_id (str): up/主播/番剧id
+            target_id (str): up/主播/番剧/动态主id
 
         Returns:
             bool: 是否关注
@@ -345,9 +392,11 @@ class BiliDatabase():
             "SELECT group_id, liver_uid FROM liver_follower WHERE group_id = ? AND liver_uid = ?",
             "SELECT user_id, season_id FROM telegram_follower WHERE user_id = ? AND season_id = ?",
             "SELECT group_id, season_id FROM telegram_follower WHERE group_id = ? AND season_id = ?",
+            "SELECT user_id, uid FROM dynamic_follower WHERE user_id = ? AND uid = ?",
+            "SELECT group_id, uid FROM dynamic_follower WHERE group_id = ? AND uid = ?"
         ]
         
-        assert 0 <= sql_type < 6, "索引长度错误"
+        assert 0 <= sql_type < len(sqls), "索引长度错误"
         
         cur = self.conn.cursor()
         ##logger.info(f'查询一对一关注')
@@ -368,7 +417,11 @@ class BiliDatabase():
         '''进行取关操作
 
         Args:
-            sql_type (int): 0-用户取关up;1-群取关up;2-用户取关主播;3-群取关主播;4-用户取关番剧;5-群取关番剧
+            sql_type (int): 
+            0-用户取关up;1-群取关up;
+            2-用户取关主播;3-群取关主播;
+            4-用户取关番剧;5-群取关番剧;
+            6-用户取关动态;7-群取关动态;
             user_id (str): 用户/群id
             uid (str): up/主播/番剧id
 
@@ -381,9 +434,11 @@ class BiliDatabase():
             "DELETE FROM liver_follower WHERE user_id = ? AND liver_uid = ?",
             "DELETE FROM liver_follower WHERE group_id = ? AND liver_uid = ?",
             "DELETE FROM telegram_follower WHERE user_id = ? AND season_id = ?",
-            "DELETE FROM telegram_follower WHERE group_id = ? AND season_id = ?"
+            "DELETE FROM telegram_follower WHERE group_id = ? AND season_id = ?",
+            "DELETE FROM dynamic_follower WHERE user_id = ? AND uid = ?",
+            "DELETE FROM dynamic_follower WHERE group_id = ? AND uid = ?"
         ]
-        assert 0 <= sql_type < 6, "索引长度错误"
+        assert 0 <= sql_type < len(sqls), "索引长度错误"
 
         cur = self.conn.cursor()
         ##logger.info(f'进行取关操作,取消{user_id}与{uid}之间的关注关系')
@@ -404,7 +459,11 @@ class BiliDatabase():
 
         Args:
             sql_type (int): 0-更新up;1-更新主播;2-更新番剧
-            args     : up-整数时间戳,uid;主播-True/False, uid;番剧-整数集数, 是否完结, season_id
+            args     : 
+            0 up-整数时间戳,uid;
+            1 主播-True/False, uid;
+            2 番剧-整数集数, 是否完结, season_id;
+            3 动态-置顶动态id, 最新动态id, uid;
 
         Returns:
             bool: 是否成功
@@ -413,9 +472,10 @@ class BiliDatabase():
         sqls = [
             "UPDATE up SET latest_update = ? WHERE up_uid = ?",
             "UPDATE liver SET is_live = ? WHERE liver_uid = ?",
-            "UPDATE telegram SET episode = ?, is_finish = ? WHERE season_id = ?"
+            "UPDATE telegram SET episode = ?, is_finish = ? WHERE season_id = ?",
+            "UPDATE dynamic SET pin_id_str, latest_timestamp WHERE uid = ?"
         ]
-        assert 0 <= sql_type < 3, "索引长度错误"
+        assert 0 <= sql_type < len(sqls), "索引长度错误"
 
         cur = self.conn.cursor()
         ##logger.info(f'更新信息表')
@@ -431,11 +491,11 @@ class BiliDatabase():
             return True
 
     def delete_info(self, sql_type: int, target_id: str) -> bool:
-        '''删除用户/群组/up/主播/番剧信息
+        '''删除用户/群组/up/主播/番剧/动态主信息
 
         Args:
-            sql_type (int): 0-用户;1-群组;2-up;3-主播;4-番剧信息
-            target_id (str): 用户/群组/up/主播/番剧id       
+            sql_type (int): 0-用户;1-群组;2-up;3-主播;4-番剧;5-动态主信息
+            target_id (str): 用户/群组/up/主播/番剧/动态主id       
 
         Returns:
             bool: 是否成功
@@ -446,7 +506,8 @@ class BiliDatabase():
             "DELETE FROM qq_group WHERE group_id = ?",
             "DELETE FROM up WHERE up_uid = ?",
             "DELETE FROM liver WHERE liver_uid = ?",
-            "DELETE FROM telegram WHERE season_id = ?"
+            "DELETE FROM telegram WHERE season_id = ?",
+            "DELETE FROM dynamic WHERE uid = ?"
         ]
 
         cur = self.conn.cursor()
@@ -462,100 +523,24 @@ class BiliDatabase():
             ##logger.info(f'删除成功')
             self.conn.commit()
             return True
-    
-    def get_from_json(self) -> None:
-        '''从json文件中读取数据,写入数据库
+    def check_dynamic_init(self) -> bool:
+        '''检查是否完成动态初始化
+
+        Returns:
+            bool: 是否完成
         '''
-        dir_path = dirname(abspath(__file__)) + "/file/"
-
-        if not os.path.exists(dir_path + "user"):
-            return
-
-        # 插入用户
-        for json_file_name in os.listdir(dir_path + "user"):
-            user_id = json_file_name.split(".")[0]
-            with open(dir_path + "user/" + json_file_name, "r", encoding='utf-8') as f:
-                user_info = json.load(f)
-                user_name = user_info[0]
-
-                self.insert_info(0, user_id, user_name)
-
-                liver_list = user_info[1]
-                for liver in liver_list:
-                    liver_uid = liver.split()[1][:-1]
-                    self.insert_relation(2, liver_uid, user_id)
-                
-                up_list = user_info[2]
-                for up in up_list:
-                    up_uid = up.split()[1][:-1]
-                    self.insert_relation(0, up_uid, user_id)
-                
-                tele_list = user_info[3]
-                for tele in tele_list:
-                    tele_uid = tele.split()[1][:-1]
-                    self.insert_relation(4, tele_uid, user_id)
-            
-            os.remove(dir_path + "user/" + json_file_name)
-        os.rmdir(dir_path + "user/")
-            # delete file
-        
-        # 插入群组
-        for json_file_name in os.listdir(dir_path + "group"):
-            group_id = json_file_name.split(".")[0]
-            with open(dir_path + "group/" + json_file_name, "r", encoding='utf-8') as f:
-                group_info = json.load(f)
-                group_name = group_info[0]
-
-                self.insert_info(1, group_id, group_name)
-
-                liver_list = group_info[1]
-                for liver in liver_list:
-                    liver_uid = liver.split()[1][:-1]
-                    self.insert_relation(3, liver_uid, group_id)
-                
-                up_list = group_info[2]
-                for up in up_list:
-                    up_uid = up.split()[1][:-1]
-                    self.insert_relation(1, up_uid, group_id)
-                
-                tele_list = group_info[3]
-                for tele in tele_list:
-                    tele_uid = tele.split()[1][:-1]
-                    self.insert_relation(5, tele_uid, group_id)  
-            
-            os.remove(dir_path + "group/" + json_file_name) 
-        os.rmdir(dir_path + "group/")     
-        # 插入up主
-        for json_file_name in os.listdir(dir_path + "up"):
-            up_uid = json_file_name.split(".")[0]
-            with open(dir_path + "up/" + json_file_name, "r", encoding='utf-8') as f:
-                up_info = json.load(f)
-                up_name = up_info[0]
-                up_timestamp = up_info[1]
-
-                self.insert_info(2, up_uid, up_name, up_timestamp)
-            
-            os.remove(dir_path + "up/" + json_file_name)
-        os.rmdir(dir_path + "up/")
-
-        # 插入主播
-        for json_file_name in os.listdir(dir_path + "stream"):
-            liver_uid = json_file_name.split(".")[0]
-            with open(dir_path + "stream/" + json_file_name, "r", encoding='utf-8') as f:
-                liver_info = json.load(f)
-                self.insert_info(3, liver_uid, liver_info[0], liver_info[1], liver_info[2])
-            
-            os.remove(dir_path + "stream/" + json_file_name)
-        
-        os.rmdir(dir_path + "stream/")
-        # 插入番剧
-        for json_file_name in os.listdir(dir_path + "telegram"):
-            tele_uid = json_file_name.split(".")[0]
-            with open(dir_path + "telegram/" + json_file_name, "r", encoding='utf-8') as f:
-                tele_info = json.load(f)
-                self.insert_info(4, tele_uid, tele_info[0], tele_info[1])
-            
-            os.remove(dir_path + "telegram/" + json_file_name)
-        os.rmdir(dir_path + "telegram/")
+        cur = self.conn.cursor()
+        try:
+            cur.execute("SELECT is_dynamic_init FROM bili_sys")
+        except Exception as e:
+            raise BiliDatebaseError(f"数据库查询是否完成动态初始化时发生错误:{e.args[0]}")
+        else:
+            result = cur.fetchone()
+            if result:
+                return True
+            else:
+                cur.execute("UPDATE bili_sys SET is_dynamic_init = 1")
+                self.conn.commit()
+                return False
         
 bili_database = BiliDatabase()
