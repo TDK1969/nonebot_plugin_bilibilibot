@@ -2,7 +2,7 @@ class BiliConnectionError(Exception):
     def __init__(self, target_type: int, target: str, reason: str):
         self.reason = reason
         self.target = target
-        self.target_type = ["up主", "主播", "番剧", "短链接"][target_type]
+        self.target_type = ["up主", "主播", "番剧", "短链接", "动态"][target_type]
     
     def __str__(self) -> str:
         return f"获取 {self.target_type} <{self.target}> 时发生网络错误: {self.reason}"
@@ -12,13 +12,13 @@ class BiliStatusCodeError(Exception):
         '''网络连接状态码错误
 
         Args:
-            target_type (int): 0-up;1-主播;2-番剧
+            target_type (int): 0-up;1-主播;2-番剧;3-短链接;4-动态
             target (str): uid或season id
             status_code (int): 状态码
         '''
         self.status_code = status_code
         self.target = target
-        self.target_type = ["up主", "主播", "番剧", "短链接"][target_type]
+        self.target_type = ["up主", "主播", "番剧", "短链接", "动态"][target_type]
     
     def __str__(self) -> str:
         ret_str = f"获取 {self.target_type} <{self.target}> 时发生网络错误, 状态码为:{self.status_code}"
@@ -29,7 +29,7 @@ class BiliAPIRetCodeError(Exception):
         '''_summary_
 
         Args:
-            target_type (int): 0-up;1-主播;2-番剧
+            target_type (int): 0-up;1-主播;2-番剧;3-动态
             target (str): uid或season id
             ret_code (int): b站接口返回的返回码
             msg (str): b站接口返回的错误信息
@@ -38,7 +38,7 @@ class BiliAPIRetCodeError(Exception):
             _type_: _description_
         '''
         self.target = target
-        self.target_type = ["up主", "主播", "番剧"][target_type]
+        self.target_type = ["up主", "主播", "番剧", "动态"][target_type]
         self.ret_code = ret_code
         self.ret_msg = ret_msg
         

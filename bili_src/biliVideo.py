@@ -27,14 +27,14 @@ async def check_up_update() -> None:
     #assert status == True, "数据库发生错误"
     check_up_list = bili_task_manager.get_up_check_update_list()
     results = await asyncio.gather(
-        *[bili_client.get_latest_video(uid, latest_timestamp) for uid, latest_timestamp in check_up_list],
+        *[bili_client.get_latest_video(uid, bili_task_manager.up_list[uid]["latest_timestamp"]) for uid in check_up_list],
         return_exceptions=True
     )
     
     for i in range(len(check_up_list)):
         if isinstance(results[i], tuple):
             if results[i][0] is True:
-                up_uid = check_up_list[i][0]
+                up_uid = check_up_list[i]
                 up_name = bili_task_manager.up_list[up_uid]["up_name"]
 
                 logger.info(f'{__PLUGIN_NAME}检测到up主<{up_name}>更新了视频')
