@@ -39,6 +39,7 @@ async def check_telegram_update():
                 text_msg = "【B站动态】\n《{}》已更新第{}集\n标题: {}\n链接: {}\n".format(
                         telegram_list[i]["telegram_title"], results[i][1], results[i][2], results[i][3]
                     )
+                bili_task_manager.update_telegram_info(telegram_list[i]["season_id"], results[i][1], results[i][5])
                 cover_msg = MessageSegment.image(results[i][4])
                 reported_msg = text_msg + cover_msg
                 logger.info(f'[{__PLUGIN_NAME}]向关注用户发送更新通知')

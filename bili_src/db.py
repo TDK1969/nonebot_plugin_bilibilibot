@@ -255,7 +255,7 @@ class BiliDatabase():
         sqls = [
             "SELECT up_uid, up_name, latest_update FROM up",
             "SELECT liver_uid, liver_name, is_live, live_room FROM liver",
-            "SELECT season_id, telegram_title, episode FROM telegram WHERE is_finish IS FALSE",
+            "SELECT season_id, telegram_title, episode FROM telegram WHERE is_finish = 0",
             "SELECT user_id FROM qq_user",
             "SELECT group_id FROM qq_group",
             "SELECT uid, u_name, pin_id_str, latest_timestamp FROM dynamic"
