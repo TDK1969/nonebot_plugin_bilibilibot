@@ -8,13 +8,16 @@ from nonebot.adapters.onebot.v11.event import GroupMessageEvent, PrivateMessageE
 from nonebot.params import CommandArg
 from nonebot.permission import SUPERUSER
 from .config import Config
-
-from .biliStream import *
-from .biliVideo import *
-from .biliTelegram import *
-from .basicFunc import *
-from .rule import groupMessageRule, privateMessageRule
-from .bili_task import BiliTaskManager
+import sys
+sys.path.append("..")
+from .bili_src.biliStream import *
+from .bili_src.biliVideo import *
+from .bili_src.biliTelegram import *
+from .bili_src.basicFunc import *
+from .bili_src.bili_dynamic import follow_dynamic_list, unfollow_dynamic_list
+from .bili_src.rule import groupMessageRule, privateMessageRule
+from .bili_src.bili_task import BiliTaskManager
+from .bili_src.bili_dynamic import check_dynamic_update
 
 import os
 import json
@@ -56,7 +59,7 @@ listFollowingCommand = on_command("查询关注", aliases={"查询成分"}, perm
 async def listFollowingCommandHandler(event: Union[PrivateMessageEvent, GroupMessageEvent], args: Message = CommandArg()):
     await create_user(event)
     inputArgs = args.extract_plain_text().split()
-    defaultArgs = ['直播', 'up主', '番剧']
+    defaultArgs = ['直播', 'up主', '番剧', '动态']
 
     if isinstance(event, PrivateMessageEvent):
         user_id = event.sender.user_id
@@ -80,10 +83,12 @@ async def listFollowingCommandHandler(event: Union[PrivateMessageEvent, GroupMes
                 followed_up_list = bili_database.query_user_relation(1, user_id)
                 followed_liver_list = bili_database.query_user_relation(3, user_id)
                 followed_telegram_list = bili_database.query_user_relation(5, user_id)
+                followed_dynamic_list = bili_database.query_user_relation(7, user_id)
             else:
                 followed_up_list = bili_database.query_group_relation(1, user_id)
                 followed_liver_list = bili_database.query_group_relation(3, user_id)
                 followed_telegram_list = bili_database.query_group_relation(5, user_id)
+                followed_dynamic_list = bili_database.query_group_relation(7, user_id)
             
             textMsg = ""
             if 'up主' in inputArgs:
@@ -95,7 +100,7 @@ async def listFollowingCommandHandler(event: Union[PrivateMessageEvent, GroupMes
                         
                 else:
                     textMsg += '无关注的up主\n'
-            textMsg += '\n'
+                textMsg += '\n'
 
             if '直播' in inputArgs:
                 if followed_liver_list:
@@ -105,7 +110,7 @@ async def listFollowingCommandHandler(event: Union[PrivateMessageEvent, GroupMes
                         textMsg += '> ' + f"{liver_name}(uid: {liver_uid})" + '\n'
                 else:
                     textMsg += '无关注的主播\n'
-            textMsg += '\n'
+                textMsg += '\n'
 
             if '番剧' in inputArgs:
                 if followed_telegram_list:
@@ -116,7 +121,18 @@ async def listFollowingCommandHandler(event: Union[PrivateMessageEvent, GroupMes
                 
                 else:
                     textMsg += '无关注的番剧'
-            textMsg += '\n'
+                textMsg += '\n'
+
+            if '动态' in inputArgs:
+                if followed_dynamic_list:
+                    textMsg += '关注的动态主\n'
+                    for uid in followed_dynamic_list:
+                        uid, u_name, _, _ = bili_database.query_info(5, uid)
+                        textMsg += '> ' + f"{u_name}(uid: {uid})" + '\n'
+                
+                else:
+                    textMsg += '无关注的动态主'
+                textMsg += '\n'
 
             await listFollowingCommand.send(textMsg)
         else:
@@ -170,6 +186,28 @@ async def unfollowTelegramCommandHandler(event: Union[PrivateMessageEvent, Group
     if isinstance(event, GroupMessageEvent):
         success_list, fail_list = await unfollow_telegram_list(event.group_id, season_id_list, 1)
     await unfollowTelegramCommand.finish(f"取关成功:\n{success_list}\n取关失败:\n{fail_list}")
+
+follow_dynamic_command = on_command("关注动态", permission=ALL_PERMISSION)
+@follow_dynamic_command.handle()
+async def follow_dynamic_commandHandler(event: Union[PrivateMessageEvent, GroupMessageEvent], args: Message = CommandArg()):
+    await create_user(event)
+    uid_list = args.extract_plain_text().split() 
+    if isinstance(event, PrivateMessageEvent):
+        success_list, fail_list = await follow_dynamic_list(event.sender.user_id, uid_list, 0)
+    if isinstance(event, GroupMessageEvent):
+        success_list, fail_list = await follow_dynamic_list(event.group_id, uid_list, 1)
+    await follow_dynamic_command.finish(f"关注成功:\n{success_list}\n关注失败:\n{fail_list}")
+
+unfollow_dynamic_command = on_command("取关动态", permission=ALL_PERMISSION)
+@unfollow_dynamic_command.handle()
+async def unfollow_dynamic_commandHandler(event: Union[PrivateMessageEvent, GroupMessageEvent], args: Message = CommandArg()):
+    await create_user(event)
+    uid_list = args.extract_plain_text().split()
+    if isinstance(event, PrivateMessageEvent):
+        success_list, fail_list = await unfollow_dynamic_list(event.sender.user_id, uid_list, 0)
+    if isinstance(event, GroupMessageEvent):
+        success_list, fail_list = await unfollow_dynamic_list(event.group_id, uid_list, 1)
+    await unfollow_dynamic_command.finish(f"取关成功:\n{success_list}\n取关失败:\n{fail_list}")
 
 followUpByShare = on_message(
     rule=regex('\[CQ:json,[\w\W]*"appid":100951776[\w\W]*space.bilibili.com[\w\W]*[\w\W]*\]') & privateMessageRule, 
@@ -335,6 +373,7 @@ async def sendBroacast(event: MessageEvent):
 require("nonebot_plugin_apscheduler")
 from nonebot_plugin_apscheduler import scheduler
 logger.debug(f'{__PLUGIN_NAME}注册定时任务')
-scheduler.add_job(check_bili_live, "interval", minutes=1, id="biliStream", misfire_grace_time=90)
-scheduler.add_job(check_up_update, "interval", minutes=5, id="biliUp", misfire_grace_time=90)
-scheduler.add_job(check_telegram_update, "interval", minutes=10, id="biliTele", misfire_grace_time=90)
+scheduler.add_job(check_bili_live, "interval", minutes=1, id="bili_stream", misfire_grace_time=90)
+scheduler.add_job(check_up_update, "interval", minutes=1, id="bili_up", misfire_grace_time=90)
+scheduler.add_job(check_telegram_update, "interval", minutes=10, id="bili_telegram", misfire_grace_time=90)
+scheduler.add_job(check_dynamic_update, "interval", minutes=1, id="bili_dynamic", misfire_grace_time=90)

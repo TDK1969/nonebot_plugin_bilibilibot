@@ -26,6 +26,8 @@ async def check_up_update() -> None:
     schedBot = nonebot.get_bot()
     #assert status == True, "数据库发生错误"
     check_up_list = bili_task_manager.get_up_check_update_list()
+    #logger.debug(f'{__PLUGIN_NAME}check_up_list = {check_up_list}')
+    
     results = await asyncio.gather(
         *[bili_client.get_latest_video(uid, bili_task_manager.up_list[uid]["latest_timestamp"]) for uid in check_up_list],
         return_exceptions=True
@@ -50,7 +52,7 @@ async def check_up_update() -> None:
                 for group_id in group_list:
                     await schedBot.send_msg(message=textMsg + MessageSegment.image(results[i][4]), group_id=group_id)
         elif isinstance(results[i], (BiliAPIRetCodeError, BiliStatusCodeError, BiliConnectionError)):
-            exception_msg = f'[错误报告]\n检测up主 <{up_name}> 更新情况时发生错误\n错误类型: {type(results[i])}\n错误信息: {results[i]}'
+            exception_msg = f'[错误报告]\n检测up主 <{check_up_list[i]}> 更新情况时发生错误\n错误类型: {type(results[i])}\n错误信息: {results[i]}'
             logger.error(f"[{__PLUGIN_NAME}]" + exception_msg)
 
 async def follow_up(uid: str, user_id: str, user_type: int) -> Tuple[bool, str]:

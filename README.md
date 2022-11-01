@@ -12,7 +12,7 @@
 </div>
 
 # 简介
-基于[Nonebot2](https://github.com/nonebot/nonebot2)的bilibili通知插件，可将up主，主播以及番剧的更新/直播动态推送到QQ
+基于[Nonebot2](https://github.com/nonebot/nonebot2)的bilibili通知插件，可将up主投稿视频,主播开播,番剧的更新以及用户更新动态推送到QQ
 
 **已支持v2.0.0-beta.5**
 ## 依赖
@@ -57,6 +57,9 @@
 ![videupdate](https://github.com/TDK1969/nonebot_plugin_bilibilibot/blob/main/docs/videopush.jpg?raw=true)
 ## 直播开播推送
 ![streampuah](https://github.com/TDK1969/nonebot_plugin_bilibilibot/blob/main/docs/streampush.jpg?raw=true)
+## 动态更新推送
+![dynamicpuah](https://github.com/TDK1969/nonebot_plugin_bilibilibot/blob/main/docs/dynamic.jpg?raw=true)
+
 ## 通过B站客户端分享进行关注
 ![follow](https://github.com/TDK1969/nonebot_plugin_bilibilibot/blob/main/docs/follow.jpg?raw=true)
 ## 查询关注列表
@@ -65,6 +68,12 @@
 
 # 更新日志
 [完整日志](https://github.com/TDK1969/nonebot_plugin_bilibilibot/blob/main/file/source/ChangeLog.md)
+- **ver 2.3.0**
+```
+1. 增加对动态更新推送的功能
+2. 修改了文件目录结构
+```
+
 - **ver 2.2.1**
 ```
 1. 对应用层和数据库层进行解耦
