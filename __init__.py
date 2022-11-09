@@ -75,14 +75,22 @@ async def listFollowingCommandHandler(event: Union[PrivateMessageEvent, GroupMes
         await listFollowingCommand.finish(f"查询失败，存在错误参数:{exceptArgs}\n请正确输入命令,例如: '查询成分 直播' 或 '查询成分 直播 up主 番剧'")
 
     if not inputArgs:
-            inputArgs = defaultArgs
+        inputArgs = defaultArgs
+    
+    logger.debug(f'{__PLUGIN_NAME} user_id type: {type(user_id)}')
+    
+
     try:
         res = bili_database.query_info(user_type, user_id)
+        logger.debug(f'{__PLUGIN_NAME}res = {res}')
+        
         if res:
             if user_type == 0:
                 followed_up_list = bili_database.query_user_relation(1, user_id)
                 followed_liver_list = bili_database.query_user_relation(3, user_id)
                 followed_telegram_list = bili_database.query_user_relation(5, user_id)
+                logger.debug(f'{__PLUGIN_NAME}followed_telegram_list = {followed_telegram_list}')
+                
                 followed_dynamic_list = bili_database.query_user_relation(7, user_id)
             else:
                 followed_up_list = bili_database.query_group_relation(1, user_id)
@@ -116,7 +124,7 @@ async def listFollowingCommandHandler(event: Union[PrivateMessageEvent, GroupMes
                 if followed_telegram_list:
                     textMsg += '关注的番剧\n'
                     for season_id in followed_telegram_list:
-                        season_id, telegram_title, _ = bili_database.query_info(4, season_id)
+                        season_id, telegram_title, _, _ = bili_database.query_info(4, season_id)
                         textMsg += '> ' + f"{telegram_title}(season_id: ss{season_id})" + '\n'
                 
                 else:
@@ -374,6 +382,6 @@ require("nonebot_plugin_apscheduler")
 from nonebot_plugin_apscheduler import scheduler
 logger.debug(f'{__PLUGIN_NAME}注册定时任务')
 scheduler.add_job(check_bili_live, "interval", minutes=1, id="bili_stream", misfire_grace_time=90)
-scheduler.add_job(check_up_update, "interval", minutes=1, id="bili_up", misfire_grace_time=90)
+#scheduler.add_job(check_up_update, "interval", minutes=2, id="bili_up", misfire_grace_time=90)
 scheduler.add_job(check_telegram_update, "interval", minutes=10, id="bili_telegram", misfire_grace_time=90)
 scheduler.add_job(check_dynamic_update, "interval", minutes=1, id="bili_dynamic", misfire_grace_time=90)
