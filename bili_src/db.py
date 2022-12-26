@@ -185,14 +185,14 @@ class BiliDatabase():
         '''
 
         sqls = [
-            "INSERT INTO up_follower(id, up_uid, user_id) VALUES (NULL, ?, ?)",
-            "INSERT INTO up_follower(id, up_uid, group_id) VALUES (NULL, ?, ?)",
-            "INSERT INTO liver_follower(id, liver_uid, user_id)  VALUES (NULL, ?, ?)",
-            "INSERT INTO liver_follower(id, liver_uid, group_id) VALUES (NULL, ?, ?)",
-            "INSERT INTO telegram_follower(id, season_id, user_id) VALUES (NULL, ?, ?)",
-            "INSERT INTO telegram_follower(id, season_id, group_id) VALUES (NULL, ?, ?)",
-            "INSERT INTO dynamic_follower(id, uid, user_id) VALUES (NULL, ?, ?)",
-            "INSERT INTO dynamic_follower(id, uid, group_id) VALUES (NULL, ?, ?)"
+            "INSERT INTO up_follower(up_uid, user_id) VALUES (?, ?)",
+            "INSERT INTO up_follower(up_uid, group_id) VALUES (?, ?)",
+            "INSERT INTO liver_follower(liver_uid, user_id)  VALUES (?, ?)",
+            "INSERT INTO liver_follower(liver_uid, group_id) VALUES (?, ?)",
+            "INSERT INTO telegram_follower(season_id, user_id) VALUES (?, ?)",
+            "INSERT INTO telegram_follower(season_id, group_id) VALUES (?, ?)",
+            "INSERT INTO dynamic_follower(uid, user_id) VALUES (?, ?)",
+            "INSERT INTO dynamic_follower(uid, group_id) VALUES (?, ?)"
         ]
         cur = self.conn.cursor()
         
@@ -227,7 +227,7 @@ class BiliDatabase():
             "SELECT group_id, group_name FROM qq_group WHERE group_id = ?",
             "SELECT up_uid, up_name, latest_update FROM up WHERE up_uid = ?",
             "SELECT liver_uid, liver_name, is_live, live_room FROM liver WHERE liver_uid = ?",
-            "SELECT season_id, telegram_title, episode FROM telegram WHERE season_id = ?",
+            "SELECT season_id, telegram_title, episode, is_finish FROM telegram WHERE season_id = ?",
             "SELECT uid, u_name, pin_id_str, latest_timestamp FROM dynamic WHERE uid = ?"
         ]
         assert 0 <= sql_type < len(sqls), "索引长度错误"
@@ -255,7 +255,7 @@ class BiliDatabase():
         sqls = [
             "SELECT up_uid, up_name, latest_update FROM up",
             "SELECT liver_uid, liver_name, is_live, live_room FROM liver",
-            "SELECT season_id, telegram_title, episode FROM telegram WHERE is_finish = 0",
+            "SELECT season_id, telegram_title, episode, is_finish FROM telegram",
             "SELECT user_id FROM qq_user",
             "SELECT group_id FROM qq_group",
             "SELECT uid, u_name, pin_id_str, latest_timestamp FROM dynamic"
@@ -530,5 +530,18 @@ class BiliDatabase():
                 cur.execute("UPDATE bili_sys SET is_dynamic_init = 1")
                 self.conn.commit()
                 return False
+    
+    def dbg_check_telegram_follow(self) -> List[Tuple]:
+
+        cur = self.conn.cursor()
+        ##logger.info(f'查询群组关注')
+        try:
+            cur.execute("SELECT rowid, season_id, user_id, group_id FROM telegram_follower")
+        except Exception as e:
+            ##logger.error(f'查询群组关注时发生错误:\n{e}')
+            raise BiliDatebaseError(f"数据库查询群组关注时发生错误:{e.args[0]}")
+        else:
+            temp = cur.fetchall()
+            return temp
         
 bili_database = BiliDatabase()

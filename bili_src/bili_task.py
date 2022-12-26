@@ -58,11 +58,14 @@ class BiliTaskManager():
                     logger.debug(f'{liver_uid}已经无人关注')
                 
             telegram_list = bili_database.query_all(2)
-            for season_id, telegram_title, episode in telegram_list:
+            
+            for season_id, telegram_title, episode, is_finish in telegram_list:
+                
                 self.telegram_list[season_id] = {
                     "season_id": season_id,
                     "telegram_title": telegram_title,
                     "episode": episode,
+                    "is_finish": bool(is_finish),
                     "user_follower": set(bili_database.query_user_relation(4, season_id)),
                     "group_follower": set(bili_database.query_group_relation(4, season_id))
                 }
@@ -86,9 +89,6 @@ class BiliTaskManager():
                 else:
                     self.dynamic_list[uid]["next_update_check"] = i
                 i = (i + 1) % self.__update_check_len__
-
-                
-                    
 
         except Exception as e:
             logger.debug(f'{e}')
@@ -172,10 +172,8 @@ class BiliTaskManager():
         '''
         try:
             bili_database.update_info(2, episode, is_finish, season_id)
-            if is_finish:
-                self.telegram_list.pop(season_id)
-            else:
-                self.telegram_list[season_id]["episode"] = episode
+            self.telegram_list[season_id]["is_finish"] = is_finish
+            self.telegram_list[season_id]["episode"] = episode
             return True
         except BiliDatebaseError as e:
             exception_msg = f'【错误报告】\n更新番剧 <{season_id}> 时数据库发生错误\n错误信息: {e}\n'
@@ -263,11 +261,12 @@ class BiliTaskManager():
                     self.liver_list[target_id]["user_follower"].add(user_id)
             elif target_type == 2:
                 if target_id not in self.telegram_list:
-                    _, telegram_title, episode = bili_database.query_info(4, target_id)
+                    _, telegram_title, episode, is_finish = bili_database.query_info(4, target_id)
                     self.telegram_list[target_id] = {
                         "season_id": target_id,
                         "telegram_title": telegram_title,
                         "episode": episode,
+                        "is_finish": bool(is_finish),
                         "user_follower": set(bili_database.query_user_relation(4, target_id)),
                         "group_follower": set(bili_database.query_group_relation(4, target_id))
                     }
@@ -337,11 +336,12 @@ class BiliTaskManager():
                     self.liver_list[target_id]["group_follower"].add(group_id)
             elif target_type == 2:
                 if target_id not in self.telegram_list:
-                    _, telegram_title, episode = bili_database.query_info(4, target_id)
+                    _, telegram_title, episode, is_finish = bili_database.query_info(4, target_id)
                     self.telegram_list[target_id] = {
                         "season_id": target_id,
                         "telegram_title": telegram_title,
                         "episode": episode,
+                        "is_finish": bool(is_finish),
                         "user_follower": set(bili_database.query_user_relation(4, target_id)),
                         "group_follower": set(bili_database.query_group_relation(4, target_id))
                     }
@@ -519,6 +519,7 @@ class BiliTaskManager():
                 "season_id": season_id,
                 "telegram_title": telegram_title,
                 "episode": episode,
+                "is_finish": is_finish,
                 "user_follower": set(bili_database.query_user_relation(4, season_id)),
                 "group_follower": set(bili_database.query_group_relation(4, season_id))
             }

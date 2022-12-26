@@ -1,8 +1,7 @@
 import httpx
-from random import choice
-from lxml import etree
+from random import choice, uniform
 import asyncio
-import json
+import time
 from typing import List, Tuple, Dict
 from .exception import BiliAPI404Error, BiliAPIRetCodeError, BiliConnectionError, BiliDatebaseError, BiliInvalidRoomId, BiliInvalidShortUrl, BiliNoLiveRoom, BiliStatusCodeError
 from nonebot.log import logger
@@ -101,54 +100,7 @@ class BiliClient():
         }
         return httpx.Headers(headers)
 
-    async def __get_page__(self, page: int):
-        print(f'正在抓取第{page}页……')
-        try:
-            async with httpx.AsyncClient(headers=self.__request_header__()) as client:
-                response = await client.get(url=f'http://www.ip3366.net/free/?stype=1&page={page}', timeout=5)
-        except Exception as e:
-            return
-        text = response.text
-        https_proxy_list = []
-        html = etree.HTML(text)
-        tr_list = html.xpath('/html/body/div[2]/div/div[2]/table/tbody/tr')
-        for td in tr_list:
-            ip_ = td.xpath('./td[1]/text()')[0] #ip
-            port_ = td.xpath('./td[2]/text()')[0]  #端口
-            type_ = td.xpath('./td[4]/text()')[0].lower()
-            proxy = f"http://{ip_ + ':' + port_}"
-            if type_ == "https":
-                https_proxy_list.append(proxy)
-        
-        await asyncio.gather(*[self.test_ip(i) for i in https_proxy_list])
-
-    async def __test_ip__(self, proxy) -> None:
-        try:
-            async with httpx.AsyncClient(headers=self.__request_header__(), proxies=proxy) as client:
-                response = await client.get(url='https://api.live.bilibili.com/room/v1/Room/get_info?room_id=42062')
-            if response.status_code == 200:
-                if response.json()["code"] == 0:
-                    self.__usable_ip_list__.add(proxy)
-                    print(proxy, '\033[31m可用\033[0m')
-            else:
-                print(proxy, '不可用')
-            return
-        except Exception as e:
-            print(proxy,'请求异常')
-            return
-
-    async def update_proxy_pool(self) -> None:
-        '''更新代理池
-        '''
-        self.__usable_ip_list__.clear()
-        tasks_list = [self.__get_page__(i) for i in range(1, 6)]
-        await asyncio.gather(*tasks_list)
-
-        async with self.__proxy_lock__:
-            self.__proxy_pool__ = list(self.__usable_ip_list__)
-            self.__proxy_pool__.append(None)
-        
-        self.__usable_ip_list__.clear()
+    
     
     async def get_latest_video(self, uid: str, last_udpate_time: int) -> Tuple[bool, str, str, int, str]:
         """
@@ -166,6 +118,7 @@ class BiliClient():
         try:
             async with httpx.AsyncClient(headers=self.__request_header__()) as client:
                 await client.get(url=self.API["get_bili_cookie"])
+                time.sleep(uniform(2, 4))
                 response = await client.get(url=self.API["get_latest_video_by_uid"].format(uid))
         except Exception as e:
             raise BiliConnectionError(0, uid, e.args[0])
@@ -769,5 +722,28 @@ class BiliClient():
             update_news_list.append(temp_news)
                 
         return (top_news_change, bool(len(update_news_list)), top_news_id, update_news_list)
+    
+    def web_request(self, url: str) -> httpx.Response:
+        '''根据url进行网络访问
+
+        Args:
+            url (str): 目标网站
+
+        Returns:
+            httpx.Response: 返回响应
+        '''
+        with httpx.Client(headers=self.__request_header__()) as client:
+            try:
+                response = client.get(url=url)
+            except Exception as e:
+                logger.debug(f'出现网络连接错误:{e}')
+                return None
+            else:
+                return response
+                
+            
+
+
+
     
 bili_client = BiliClient()
