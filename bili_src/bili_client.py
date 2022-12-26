@@ -1,8 +1,8 @@
 import httpx
-from random import choice
+from random import choice, uniform
 from lxml import etree
 import asyncio
-import json
+import time
 from typing import List, Tuple, Dict
 from .exception import BiliAPI404Error, BiliAPIRetCodeError, BiliConnectionError, BiliDatebaseError, BiliInvalidRoomId, BiliInvalidShortUrl, BiliNoLiveRoom, BiliStatusCodeError
 from nonebot.log import logger
@@ -166,6 +166,7 @@ class BiliClient():
         try:
             async with httpx.AsyncClient(headers=self.__request_header__()) as client:
                 await client.get(url=self.API["get_bili_cookie"])
+                time.sleep(uniform(2, 4))
                 response = await client.get(url=self.API["get_latest_video_by_uid"].format(uid))
         except Exception as e:
             raise BiliConnectionError(0, uid, e.args[0])
@@ -769,5 +770,28 @@ class BiliClient():
             update_news_list.append(temp_news)
                 
         return (top_news_change, bool(len(update_news_list)), top_news_id, update_news_list)
+    
+    def web_request(self, url: str) -> httpx.Response:
+        '''根据url进行网络访问
+
+        Args:
+            url (str): 目标网站
+
+        Returns:
+            httpx.Response: 返回响应
+        '''
+        with httpx.Client(headers=self.__request_header__()) as client:
+            try:
+                response = client.get(url=url)
+            except Exception as e:
+                logger.debug(f'出现网络连接错误:{e}')
+                return None
+            else:
+                return response
+                
+            
+
+
+
     
 bili_client = BiliClient()

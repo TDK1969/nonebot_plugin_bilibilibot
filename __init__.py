@@ -31,6 +31,7 @@ config = Config.parse_obj(global_config)
 __PLUGIN_NAME = "[bilibilibot]"
 
 ALL_PERMISSION = GROUP_ADMIN | GROUP_OWNER | PRIVATE_FRIEND | SUPERUSER
+PACKAGEPATH =  dirname(abspath(__file__))
 
 follow_liver_command = on_command("关注主播", permission=ALL_PERMISSION)
 @follow_liver_command.handle()
@@ -354,7 +355,7 @@ helpCommand = on_command("help", permission=ALL_PERMISSION, aliases={'帮助'})
 async def sendHelpMsg(event: MessageEvent):
     await create_user(event)
     helpMsg = ""
-    with open(f'{PackagePath}/file/source/help.json', 'r', encoding='utf-8') as f:
+    with open(f'{PACKAGEPATH}/file/source/help.json', 'r', encoding='utf-8') as f:
         helpMsg = json.load(f)
     await helpCommand.finish(helpMsg)
 
@@ -362,7 +363,7 @@ publicBroacast = on_command("broacast", aliases={'广播'}, permission=permissio
 @publicBroacast.handle()
 async def sendBroacast(event: MessageEvent):
     announcement = ""
-    announcementPath = f'{PackagePath}/file/source/announcement.json'
+    announcementPath = f'{PACKAGEPATH}/file/source/announcement.json'
     if os.path.exists(announcementPath):
         with open(announcementPath, 'r', encoding='utf-8') as f:
             announcement = json.load(f)
@@ -382,6 +383,6 @@ require("nonebot_plugin_apscheduler")
 from nonebot_plugin_apscheduler import scheduler
 logger.debug(f'{__PLUGIN_NAME}注册定时任务')
 scheduler.add_job(check_bili_live, "interval", minutes=1, id="bili_stream", misfire_grace_time=90)
-#scheduler.add_job(check_up_update, "interval", minutes=2, id="bili_up", misfire_grace_time=90)
+scheduler.add_job(check_up_update, "interval", minutes=2, id="bili_up", misfire_grace_time=90)
 scheduler.add_job(check_telegram_update, "interval", minutes=10, id="bili_telegram", misfire_grace_time=90)
 scheduler.add_job(check_dynamic_update, "interval", minutes=1, id="bili_dynamic", misfire_grace_time=90)

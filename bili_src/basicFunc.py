@@ -10,7 +10,7 @@ from os.path import abspath, dirname
 from nonebot.adapters.onebot.v11.event import GroupMessageEvent, PrivateMessageEvent
 from .db import bili_database
 from .exception import *
-PackagePath =  dirname(abspath(__file__))
+
 __PLUGIN_NAME = "[bilibilibot~基础]"
 
 def GetAllUser() -> List[str]:
@@ -97,44 +97,4 @@ async def create_user(event: Union[PrivateMessageEvent, GroupMessageEvent]) -> N
             ex_type, ex_val, _ = sys.exc_info()
             exception_msg = '【错误报告】\n创建用户时发生错误\n错误类型: {}\n错误值: {}\n'.format(ex_type, ex_val)
             logger.error(f"{__PLUGIN_NAME}\n" + exception_msg + traceback.format_exc())
-
-
-def CheckDir():
-    """
-    @description  :
-    检查插件运行所需要的文件目录是否存在，不存在则创建
-    ---------
-    @param  :
-    
-    -------
-    @Returns  :
-    
-    -------
-    """
-    
-    baseDir = f'{PackagePath}/file/'
-
-    if not os.path.exists(baseDir + 'source'):
-        logger.debug(f'{__PLUGIN_NAME}source文件夹不存在')
-        os.makedirs(baseDir + 'source')
-        
-    if not os.path.exists(baseDir + 'stream'):
-        logger.debug(f'{__PLUGIN_NAME}stream文件夹不存在')
-        os.makedirs(baseDir + 'stream')
-    
-    if not os.path.exists(baseDir + 'telegram'):
-        logger.debug(f'{__PLUGIN_NAME}telegram文件夹不存在')
-        os.makedirs(baseDir + 'telegram')
-    
-    if not os.path.exists(baseDir + 'up'):
-        logger.debug(f'{__PLUGIN_NAME}up文件夹不存在')
-        os.makedirs(baseDir + 'up')
-        
-    if not os.path.exists(baseDir + 'user'):
-        logger.debug(f'{__PLUGIN_NAME}user文件夹不存在')
-        os.makedirs(baseDir + 'user')
-    
-    if not os.path.exists(baseDir + 'group'):
-        logger.debug(f'{__PLUGIN_NAME}group文件夹不存在')
-        os.makedirs(baseDir + 'group')
 
