@@ -350,7 +350,7 @@ async def short_url_handler(event: PrivateMessageEvent):
         logger.error(f'{__PLUGIN_NAME}【错误报告】\n解析短链接 <{short_url}> 时发生错误\n错误类型: {ex_type}\n错误值: {ex_val}\n{traceback.format_exc()}')
         await follow_by_share_short_url.finish('关注失败: 连接错误')
 
-helpCommand = on_command("help", permission=ALL_PERMISSION, aliases={'帮助'})
+helpCommand = on_command("bilihelp", permission=ALL_PERMISSION, aliases={'B站帮助'})
 @helpCommand.handle()
 async def sendHelpMsg(event: MessageEvent):
     await create_user(event)

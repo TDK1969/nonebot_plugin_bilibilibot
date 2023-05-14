@@ -68,8 +68,8 @@ class BiliClient():
         self.API = {
             # 用于获取临时cookie
             "get_bili_cookie": "https://www.bilibili.com",
-            "get_user_info_by_uid": "https://api.bilibili.com/x/space/acc/info?mid={}&jsonp=jsonp",
-            "get_latest_video_by_uid": "https://api.bilibili.com/x/space/arc/search?mid={}&ps=1&tid=0&pn=1&order=pubdate&jsonp=jsonp",
+            "get_user_info_by_uid": "https://api.bilibili.com/x/space/wbi/acc/info?mid={}",
+            "get_latest_video_by_uid": "https://api.bilibili.com/x/space/wbi/arc/search?mid={}&ps=1&tid=0&pn=1&order=pubdate&jsonp=jsonp",
             "get_live_info_by_room_id": "https://api.live.bilibili.com/room/v1/Room/get_info?room_id={}",
             "get_liver_info_by_uid": "https://api.live.bilibili.com/live_user/v1/Master/info?uid={}",
             "get_telegram_info_by_media_id": "https://api.bilibili.com/pgc/review/user?media_id={}",
@@ -167,7 +167,7 @@ class BiliClient():
 
             if response1.status_code != 200:
                 raise  BiliStatusCodeError(0, uid, response1.status_code)
-    
+            
             response1 = response1.json()
             if response1["code"] == -404:
                 raise BiliAPI404Error()

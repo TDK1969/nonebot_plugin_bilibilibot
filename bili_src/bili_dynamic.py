@@ -25,6 +25,7 @@ async def check_dynamic_update() -> None:
     @Returns  :
     -------
     """
+    logger.debug("running check_dynamic_update")
     schedBot = nonebot.get_bot()
     check_dynamic_list = bili_task_manager.get_dynamic_check_update_list()
     #logger.debug(f'{__PLUGIN_NAME}check_dynamic_list = {check_dynamic_list}')

@@ -24,7 +24,7 @@ async def check_telegram_update():
     无
     -------
     """
-    
+    logger.debug("running check_telegram_update")
     telegram_list = list(bili_task_manager.telegram_list.values())
     telegram_list = [i for i in telegram_list if i["is_finish"] is False]
     sched_bot = nonebot.get_bot()

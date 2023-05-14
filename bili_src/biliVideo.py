@@ -23,6 +23,7 @@ async def check_up_update() -> None:
     @Returns  :
     -------
     """
+    logger.debug("running check_up_update")
     schedBot = nonebot.get_bot()
     #assert status == True, "数据库发生错误"
     check_up_list = bili_task_manager.get_up_check_update_list()

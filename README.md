@@ -7,7 +7,7 @@
 # nonebot-plugin-bilibilibot
 
 👾 _NoneBot bilibili通知插件_ 👾
-<p>version: 2.3.1</p>
+<p>version: 2.3.2</p>
     
 </div>
 
@@ -68,6 +68,12 @@
 
 # 更新日志
 [完整日志](https://github.com/TDK1969/nonebot_plugin_bilibilibot/blob/main/file/source/ChangeLog.md)
+- **ver 2.3.2**
+```
+1. 修复了由于b站接口改变导致关注up主命令失败的问题
+2. 为了避免命令冲突,将命令`/help`改为`/bilihelp`
+```
+
 - **ver 2.3.1**
 ```
 1. 修复了setuptools打包错误导致的import失败问题
@@ -85,14 +91,7 @@ ep_id: https://www.bilibili.com/bangumi/play/ep433947, 中的**ep433947**
 
 season_id: https://www.bilibili.com/bangumi/play/ss39431, 中的**ss39431**
 
-media_id: https://www.bilibili.com/bangumi/media/md28235123, 中的**md28235123**
-
-
-- **ver 2.1.0**
-```
-1. 将文件存储方式修改为数据库,取代原来的JSON文件存储,解决编码或异步的问题
-2. 适配Nonebot v2.0.0-beta.5
-```
+media_id: https://www.bilibili.com/bangumi/media/md28235123, 中**md28235123**
 
 
 # 特别鸣谢

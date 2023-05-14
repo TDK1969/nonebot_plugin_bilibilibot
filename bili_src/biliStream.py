@@ -22,6 +22,7 @@ async def check_bili_live() -> None:
     @Returns  :
     -------
     """
+    logger.debug("running check_bili_live")
     liver_list = list(bili_task_manager.liver_list.values())
     
     sched_bot = nonebot.get_bot()
