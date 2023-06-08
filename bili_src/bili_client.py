@@ -67,8 +67,6 @@ class BiliClient():
         ]
         self.__usable_ip_list__ = set()
 
-        self.API["get_user_info_by_uid"]
-
         self.API = {
             # 用于获取临时cookie
             "get_bili_cookie": "https://www.bilibili.com",
