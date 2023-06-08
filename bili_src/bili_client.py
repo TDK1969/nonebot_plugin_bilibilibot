@@ -5,6 +5,8 @@ import time
 from typing import List, Tuple, Dict
 from .exception import BiliAPI404Error, BiliAPIRetCodeError, BiliConnectionError, BiliDatebaseError, BiliInvalidRoomId, BiliInvalidShortUrl, BiliNoLiveRoom, BiliStatusCodeError
 from nonebot.log import logger
+from .signature import *
+
 
 __PLUGIN_NAME__ = "[bilibilibot~Client]"
 class BiliClient():
@@ -68,16 +70,17 @@ class BiliClient():
         self.API = {
             # 用于获取临时cookie
             "get_bili_cookie": "https://www.bilibili.com",
-            "get_user_info_by_uid": "https://api.bilibili.com/x/space/wbi/acc/info?mid={}",
-            "get_latest_video_by_uid": "https://api.bilibili.com/x/space/wbi/arc/search?mid={}&ps=1&tid=0&pn=1&order=pubdate&jsonp=jsonp",
+            "get_user_info_by_uid": "https://api.bilibili.com/x/space/wbi/acc/info?{}",   # 需要签名
+            "get_latest_video_by_uid": "https://api.bilibili.com/x/space/wbi/arc/search?{}",  # 需要签名
             "get_live_info_by_room_id": "https://api.live.bilibili.com/room/v1/Room/get_info?room_id={}",
             "get_liver_info_by_uid": "https://api.live.bilibili.com/live_user/v1/Master/info?uid={}",
             "get_telegram_info_by_media_id": "https://api.bilibili.com/pgc/review/user?media_id={}",
             "get_telegram_info_by_ep_id": "https://api.bilibili.com/pgc/view/web/season?ep_id={}",
             "get_telegram_info_by_season_id": "https://api.bilibili.com/pgc/view/web/season?season_id={}",
             "get_telegram_latest_episode": "https://api.bilibili.com/pgc/view/web/season?season_id={}",
-            "get_dynamic_list_by_uid": "https://api.bilibili.com/x/polymer/web-dynamic/v1/feed/space?host_mid={}&timezone_offset=-480",
-            "get_detail_dynamic_by_id": "https://t.bilibili.com/{}"
+            "get_dynamic_list_by_uid": "https://api.bilibili.com/x/polymer/web-dynamic/v1/feed/space?host_mid={}",  # 需要buvid3 cookie获得认证
+            "get_detail_dynamic_by_id": "https://t.bilibili.com/{}",
+            "validate_buvid3": "https://api.bilibili.com/x/internal/gaia-gateway/ExClimbWuzhi"  # buvid3 认证api
         }
 
         self.__proxy_lock__ = asyncio.Lock()
@@ -119,7 +122,8 @@ class BiliClient():
             async with httpx.AsyncClient(headers=self.__request_header__()) as client:
                 await client.get(url=self.API["get_bili_cookie"])
                 time.sleep(uniform(2, 4))
-                response = await client.get(url=self.API["get_latest_video_by_uid"].format(uid))
+                response = await client.get(url=self.API["get_latest_video_by_uid"].format(get_query(mid=uid)))
+                # logger.debug(self.API["get_latest_video_by_uid"].format(get_query(mid=uid)))
         except Exception as e:
             raise BiliConnectionError(0, uid, e.args[0])
 
@@ -161,7 +165,8 @@ class BiliClient():
         async with httpx.AsyncClient(headers=self.__request_header__()) as client:
             try:
                 await client.get(self.API["get_bili_cookie"])
-                response1 = await client.get(url=self.API["get_user_info_by_uid"].format(uid))
+                response1 = await client.get(url=self.API["get_user_info_by_uid"].format(get_query(mid=uid)))
+                # logger.debug(self.API["get_user_info_by_uid"].format(get_query(mid=uid)))
             except Exception as e:
                 raise BiliConnectionError(0, uid, e.args[0])
 
@@ -176,7 +181,8 @@ class BiliClient():
             
             user_name = response1["data"]["name"]
             try:
-                response2 = await client.get(url=self.API["get_latest_video_by_uid"].format(uid))
+                response2 = await client.get(url=self.API["get_latest_video_by_uid"].format(get_query(mid=uid)))
+                # logger.debug(self.API["get_latest_video_by_uid"].format(get_query(mid=uid)))
             except Exception as e:
                 raise BiliConnectionError(0, uid, e.args[0])
 
@@ -508,7 +514,10 @@ class BiliClient():
         async with httpx.AsyncClient(headers=self.__request_header__()) as client:
             try:
                 await client.get(self.API["get_bili_cookie"])
-                response1 = await client.get(url=self.API["get_user_info_by_uid"].format(uid))
+                await client.post(self.API["validate_buvid3"], json={
+                    "payload": '{"39c8":"333.999.fp.risk","3c43":{"adca":"Win","80c9":[]}}'
+                })  # 认证buvid3
+                response1 = await client.get(url=self.API["get_user_info_by_uid"].format(get_query(mid=uid)))
             except Exception as e:
                 raise BiliConnectionError(4, uid, e.args[0])
 
@@ -574,6 +583,9 @@ class BiliClient():
         async with httpx.AsyncClient(headers=self.__request_header__()) as client:
             try:
                 await client.get(url=self.API["get_bili_cookie"])
+                await client.post(self.API["validate_buvid3"], json={
+                    "payload": '{"39c8":"333.999.fp.risk","3c43":{"adca":"Win","80c9":[]}}'
+                })  # 认证buvid3
                 response = await client.get(url=self.API["get_dynamic_list_by_uid"].format(uid))
             except Exception as e:
                 raise BiliConnectionError(4, f"uid:{uid}", e.args[0])
