@@ -1,3 +1,4 @@
+import sys
 from functools import reduce
 from hashlib import md5
 import urllib.parse
@@ -55,4 +56,45 @@ def get_query(**parameters: dict):
         sub_key=sub_key
     )
     query = urllib.parse.urlencode(signed_params)
-    return query.strip("mid=")
+    return query
+
+
+if __name__ == "__main__":
+    session = requests.session()
+    session.headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36"
+    }
+    session.get("https://www.bilibili.com", verify=False)
+    API = {
+        # 用于获取临时cookie
+        "get_bili_cookie": "https://www.bilibili.com",
+        "get_user_info_by_uid": "https://api.bilibili.com/x/space/wbi/acc/info?",  # 需要修改
+        "get_latest_video_by_uid": "https://api.bilibili.com/x/space/wbi/arc/search?",  # 需要修改
+        "get_live_info_by_room_id": "https://api.live.bilibili.com/room/v1/Room/get_info?room_id=",
+        "get_liver_info_by_uid": "https://api.live.bilibili.com/live_user/v1/Master/info?uid=",
+        "get_telegram_info_by_media_id": "https://api.bilibili.com/pgc/review/user?media_id=",
+        "get_telegram_info_by_ep_id": "https://api.bilibili.com/pgc/view/web/season?ep_id=",
+        "get_telegram_info_by_season_id": "https://api.bilibili.com/pgc/view/web/season?season_id=",
+        "get_telegram_latest_episode": "https://api.bilibili.com/pgc/view/web/season?season_id=",
+        "get_dynamic_list_by_uid": "https://api.bilibili.com/x/polymer/web-dynamic/v1/feed/space?", # buvid3 需要认证，post请求到https://api.bilibili.com/x/internal/gaia-gateway/ExClimbWuzhi
+        "get_detail_dynamic_by_id": "https://t.bilibili.com/",
+        "validate_buvid3": "https://api.bilibili.com/x/internal/gaia-gateway/ExClimbWuzhi"
+    }
+    uid = "2487065"
+    # session.post("https://api.bilibili.com/x/internal/gaia-gateway/ExClimbWuzhi", verify=False, json={
+	#     "payload": '{"39c8":"333.999.fp.risk","3c43":{"adca":"Win","80c9":[]}}'
+    # })
+    import httpx
+    # res = session.get(f'{API["get_dynamic_list_by_uid"]}host_mid={uid}', verify=False)
+    # print(res.json())
+    import asyncio
+
+    async def run():
+        async with httpx.AsyncClient(headers=session.headers, verify=False) as client:
+            await client.get(url=API["get_bili_cookie"])
+            await client.post(API["validate_buvid3"], json={
+                "payload": '{"39c8":"333.999.fp.risk","3c43":{"adca":"Win","80c9":[]}}'
+            })
+            await client.get(f'{API["get_dynamic_list_by_uid"]}host_mid={uid}')
+
+    asyncio.run(run())
