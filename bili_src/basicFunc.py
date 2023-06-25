@@ -6,6 +6,8 @@ import sys
 import traceback
 from nonebot import get_bot
 from nonebot.log import logger
+import nonebot
+from nonebot.adapters.onebot.v11.adapter import Adapter
 from os.path import abspath, dirname
 from nonebot.adapters.onebot.v11.event import GroupMessageEvent, PrivateMessageEvent
 from .db import bili_database
@@ -58,9 +60,15 @@ async def SendMsgToUsers(msg: str, users: List[str]):
     -------
     """
     
-    bot = get_bot()
+    # bot = get_bot()
+    bots = nonebot.get_adapter(Adapter).bots
     for user in users:
-        await bot.send_msg(message=msg, user_id = user)
+        for bot in bots:
+            try:
+                await bots[bot].send_msg(message=msg, user_id = user)
+            except:
+                pass
+        # await bot.send_msg(message=msg, user_id = user)
     
 async def SendMsgToGroups(msg: str, groups: List[str]):
     '''向所有群组发送公告
@@ -70,9 +78,15 @@ async def SendMsgToGroups(msg: str, groups: List[str]):
         groups (List[str]): 群组列表
     '''
     
-    bot = get_bot()
+    # bot = get_bot()
+    bots = nonebot.get_adapter(Adapter).bots
     for group in groups:
-        await bot.send_msg(message=msg, group_id = group)
+        for bot in bots:
+            try:
+                await bots[bot].send_msg(message=msg, group_id = group)
+            except:
+                pass
+        # await bot.send_msg(message=msg, group_id = group)
 
 async def create_user(event: Union[PrivateMessageEvent, GroupMessageEvent]) -> None:
     '''接受消息后,创建用户

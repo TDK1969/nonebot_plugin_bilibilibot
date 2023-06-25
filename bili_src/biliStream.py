@@ -3,6 +3,7 @@ import sys
 import traceback
 import nonebot
 from nonebot.log import logger
+from nonebot.adapters.onebot.v11.adapter import Adapter
 from nonebot.adapters.onebot.v11 import MessageSegment
 from .basicFunc import *
 from .exception import *
@@ -25,7 +26,8 @@ async def check_bili_live() -> None:
     logger.debug("running check_bili_live")
     liver_list = list(bili_task_manager.liver_list.values())
     
-    sched_bot = nonebot.get_bot()
+    # sched_bot = nonebot.get_bot()
+    bots = nonebot.get_adapter(Adapter).bots
     
     """results = await asyncio.gather(
         *[bili_client.get_live_status(liver_info[0], liver_info[3]) for liver_info in liver_list],
@@ -47,9 +49,19 @@ async def check_bili_live() -> None:
                 #bili_database.update_info(1, 1, liver_list[i][0])
 
                 user_list = liver_list[i]["user_follower"]
-                await asyncio.gather(*[sched_bot.send_msg(message=reported_msg, user_id=user_id) for user_id in user_list])
+                for bot in bots:
+                    try:
+                        #await asyncio.gather(*[sched_bot.send_msg(message=reported_msg, user_id=user_id) for user_id in user_list])
+                        await asyncio.gather(*[bots[bot].send_msg(message=reported_msg, user_id=user_id) for user_id in user_list])
+                    except:
+                        pass
                 group_list = liver_list[i]["group_follower"]
-                await asyncio.gather(*[sched_bot.send_msg(message=reported_msg, group_id=group_id) for group_id in group_list])
+                for bot in bots:
+                    try:
+                        #await asyncio.gather(*[sched_bot.send_msg(message=reported_msg, group_id=group_id) for group_id in group_list])
+                        await asyncio.gather(*[bots[bot].send_msg(message=reported_msg, group_id=group_id) for group_id in group_list])
+                    except:
+                        pass
 
             elif not results[i][0] and liver_list[i]["is_live"]:
                 logger.info(f'[{__PLUGIN_NAME}]检测到主播 <{liver_list[i]["liver_name"]}> 已下播')
