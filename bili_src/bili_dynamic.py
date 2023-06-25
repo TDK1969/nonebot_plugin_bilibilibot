@@ -5,6 +5,7 @@ import sys
 import traceback
 import nonebot
 from nonebot.log import logger
+from nonebot.adapters.onebot.v11.adapter import Adapter
 from nonebot.adapters.onebot.v11 import Message, MessageSegment
 from .basicFunc import *
 from .bili_client import bili_client
@@ -26,7 +27,8 @@ async def check_dynamic_update() -> None:
     -------
     """
     logger.debug("running check_dynamic_update")
-    schedBot = nonebot.get_bot()
+    # schedBot = nonebot.get_bot()
+    bots = nonebot.get_adapter(Adapter).bots
     check_dynamic_list = bili_task_manager.get_dynamic_check_update_list()
     #logger.debug(f'{__PLUGIN_NAME}check_dynamic_list = {check_dynamic_list}')
     
@@ -111,11 +113,21 @@ async def check_dynamic_update() -> None:
                 if len(info_msg) != 1:
                     user_list = bili_task_manager.dynamic_list[uid]["user_follower"]
                     for user_id in user_list:
-                        await schedBot.send_msg(message=info_msg, user_id=user_id)
+                        for bot in bots:
+                            try:
+                                #await schedBot.send_msg(message=info_msg, user_id=user_id)
+                                await bots[bot].send_msg(message=info_msg, user_id=user_id)
+                            except:
+                                pass
                     
                     group_list = bili_task_manager.dynamic_list[uid]["group_follower"]
                     for group_id in group_list:
-                        await schedBot.send_msg(message=info_msg, group_id=group_id)
+                        for bot in bots:
+                            try:
+                                #await schedBot.send_msg(message=info_msg, group_id=group_id)
+                                await bots[bot].send_msg(message=info_msg, group_id=group_id)
+                            except:
+                                pass
 
         elif isinstance(results[i], (BiliAPIRetCodeError, BiliStatusCodeError, BiliConnectionError)):
             exception_msg = f'[错误报告]\n检测动态主 <{check_dynamic_list[i]}> 更新情况时发生错误\n错误类型: {type(results[i])}\n错误信息: {results[i]}'

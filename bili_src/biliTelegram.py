@@ -4,6 +4,7 @@ import asyncio
 import traceback
 import nonebot
 from nonebot.log import logger
+from nonebot.adapters.onebot.v11.adapter import Adapter
 from nonebot.adapters.onebot.v11 import MessageSegment
 from .basicFunc import *
 from .exception import *
@@ -27,7 +28,8 @@ async def check_telegram_update():
     logger.debug("running check_telegram_update")
     telegram_list = list(bili_task_manager.telegram_list.values())
     telegram_list = [i for i in telegram_list if i["is_finish"] is False]
-    sched_bot = nonebot.get_bot()
+    # sched_bot = nonebot.get_bot()
+    bots = nonebot.get_adapter(Adapter).bots
     # 只对未完结的番剧进行检查
     results = await asyncio.gather(
         *[bili_client.get_telegram_latest_episode(telegram_info["season_id"], telegram_info["episode"]) for telegram_info in telegram_list],
@@ -48,10 +50,19 @@ async def check_telegram_update():
 
                 # 通知用户
                 user_list = telegram_list[i]["user_follower"]
-                await asyncio.gather(*[sched_bot.send_msg(message=reported_msg, user_id=user_id) for user_id in user_list])
-            
-                group_list = telegram_list[i]["group_follower"]
-                await asyncio.gather(*[sched_bot.send_msg(message=reported_msg, group_id=group_id) for group_id in group_list])
+                for bot in bots:
+                    try:
+                        #await asyncio.gather(*[sched_bot.send_msg(message=reported_msg, user_id=user_id) for user_id in user_list])
+                        await asyncio.gather(*[bots[bot].send_msg(message=reported_msg, user_id=user_id) for user_id in user_list])
+                    except:
+                        pass
+                group_list = liver_list[i]["group_follower"]
+                for bot in bots:
+                    try:
+                        #await asyncio.gather(*[sched_bot.send_msg(message=reported_msg, group_id=group_id) for group_id in group_list])
+                        await asyncio.gather(*[bots[bot].send_msg(message=reported_msg, group_id=group_id) for group_id in group_list])
+                    except:
+                        pass
             
         elif isinstance(results[i], (BiliAPIRetCodeError, BiliStatusCodeError, BiliConnectionError)):
             exception_msg = f'[错误报告]\n检测番剧 <{telegram_list[i]["telegram_title"]}> 更新情况时发生错误\n错误类型: {type(results[i])}\n错误信息: {results[i]}'
