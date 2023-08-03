@@ -17,7 +17,7 @@ class BiliTaskManager():
         self.__up_update_check_ptr__ = 0
         self.__dynamic_update_check_ptr__ = 0
 
-        self.__update_check_len__ = 8
+        self.__update_check_len__ = 5
 
         self.__init_from_database__()
         

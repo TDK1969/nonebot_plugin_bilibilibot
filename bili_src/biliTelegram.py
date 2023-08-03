@@ -24,15 +24,15 @@ async def check_telegram_update():
     无
     -------
     """
-    logger.debug("running check_telegram_update")
     telegram_list = list(bili_task_manager.telegram_list.values())
     telegram_list = [i for i in telegram_list if i["is_finish"] is False]
     sched_bot = nonebot.get_bot()
     # 只对未完结的番剧进行检查
-    results = await asyncio.gather(
-        *[bili_client.get_telegram_latest_episode(telegram_info["season_id"], telegram_info["episode"]) for telegram_info in telegram_list],
-        return_exceptions=True
-    )
+    async with httpx.AsyncClient(headers={"User-Agent":"Mozilla/5.0"}) as client:
+        results = await asyncio.gather(
+            *[bili_client.get_telegram_latest_episode(client, telegram_info["season_id"], telegram_info["episode"]) for telegram_info in telegram_list],
+            return_exceptions=True
+        )
 
     for i in range(len(telegram_list)):
         if isinstance(results[i], tuple):

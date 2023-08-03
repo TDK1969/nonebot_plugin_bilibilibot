@@ -4,6 +4,7 @@ import traceback
 import nonebot
 from nonebot.log import logger
 from nonebot.adapters.onebot.v11 import MessageSegment
+from nonebot.adapters.onebot.v11.adapter import Adapter
 from .basicFunc import *
 from .exception import *
 import asyncio
@@ -22,7 +23,6 @@ async def check_bili_live() -> None:
     @Returns  :
     -------
     """
-    logger.debug("running check_bili_live")
     liver_list = list(bili_task_manager.liver_list.values())
     
     sched_bot = nonebot.get_bot()
@@ -31,11 +31,11 @@ async def check_bili_live() -> None:
         *[bili_client.get_live_status(liver_info[0], liver_info[3]) for liver_info in liver_list],
         return_exceptions=True
     )"""
-
-    results = await asyncio.gather(
-        *[bili_client.get_live_status(liver_info["liver_uid"], liver_info["room_id"]) for liver_info in liver_list],
-        return_exceptions=True
-    )
+    async with httpx.AsyncClient(headers={"User-Agent":"Mozilla/5.0"}) as client:
+        results = await asyncio.gather(
+            *[bili_client.get_live_status(client, liver_info["liver_uid"], liver_info["room_id"]) for liver_info in liver_list],
+            return_exceptions=True
+        )
     for i in range(len(liver_list)):
         if isinstance(results[i], tuple):
             if results[i][0] and not liver_list[i]["is_live"]:

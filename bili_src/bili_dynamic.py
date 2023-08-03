@@ -25,19 +25,19 @@ async def check_dynamic_update() -> None:
     @Returns  :
     -------
     """
-    logger.debug("running check_dynamic_update")
     schedBot = nonebot.get_bot()
     check_dynamic_list = bili_task_manager.get_dynamic_check_update_list()
     #logger.debug(f'{__PLUGIN_NAME}check_dynamic_list = {check_dynamic_list}')
-    
-    results = await asyncio.gather(
-        *[bili_client.get_latest_dynamic(
-            uid, 
-            bili_task_manager.dynamic_list[uid]["pin_id_str"],
-            bili_task_manager.dynamic_list[uid]["latest_timestamp"]
-        ) for uid in check_dynamic_list],
-        return_exceptions=True
-    )
+    async with httpx.AsyncClient(headers={"User-Agent":"Mozilla/5.0"}) as client:
+        results = await asyncio.gather(
+            *[bili_client.get_latest_dynamic(
+                client,
+                uid, 
+                bili_task_manager.dynamic_list[uid]["pin_id_str"],
+                bili_task_manager.dynamic_list[uid]["latest_timestamp"]
+            ) for uid in check_dynamic_list],
+            return_exceptions=True
+        )
     
     for i in range(len(check_dynamic_list)):
         if isinstance(results[i], tuple):

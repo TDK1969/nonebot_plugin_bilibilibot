@@ -28,11 +28,11 @@ async def check_up_update() -> None:
     #assert status == True, "数据库发生错误"
     check_up_list = bili_task_manager.get_up_check_update_list()
     #logger.debug(f'{__PLUGIN_NAME}check_up_list = {check_up_list}')
-    
-    results = await asyncio.gather(
-        *[bili_client.get_latest_video(uid, bili_task_manager.up_list[uid]["latest_timestamp"]) for uid in check_up_list],
-        return_exceptions=True
-    )
+    async with httpx.AsyncClient(headers={"User-Agent":"Mozilla/5.0"}) as client:
+        results = await asyncio.gather(
+            *[bili_client.get_latest_video(client, uid, bili_task_manager.up_list[uid]["latest_timestamp"]) for uid in check_up_list],
+            return_exceptions=True
+        )
     
     for i in range(len(check_up_list)):
         if isinstance(results[i], tuple):

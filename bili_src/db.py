@@ -81,6 +81,15 @@ class BiliDatabase():
             )
             ''')
 
+        # 创建wbi参数记录表
+        cur.execute('''CREATE TABLE IF NOT EXISTS wbi_record
+            (
+                date INTERGER NOT NULL,
+                img_key VARCHAR(32) NOT NULL,
+                sub_key VARCHAR(32) NOT NULL
+            )
+            ''')
+
         # 创建索引
         cur.execute("CREATE INDEX IF NOT EXISTS up_index ON up_follower (up_uid)")
         cur.execute("CREATE INDEX IF NOT EXISTS up_user_index ON up_follower (user_id)")
@@ -543,5 +552,42 @@ class BiliDatabase():
         else:
             temp = cur.fetchall()
             return temp
+    
+    def get_wbi_param(self) -> Tuple[str, str, str]:
+        '''获取数据库中的wbi参数
+
+        Returns:
+            Tuple[str, str, str]: (date, img_key, sub_key)
+        '''
+        cur = self.conn.cursor()
+        try:
+            cur.execute("SELECT date, img_key, sub_key FROM wbi_record")
+        except Exception as e:
+            raise BiliDatebaseError(f"数据库获取wbi参数时发生错误:{e.args[0]}")
+        else:
+            temp = cur.fetchone()
+            return temp
+
+    def set_wbi_param(self, date: int, img_key: str, sub_key: str) -> bool:
+        '''设置新的wbi参数
+
+        Args:
+            date (int): 日期
+            img_key (str): img_key
+            sub_key (str): sub_key
+        '''
+        cur = self.conn.cursor()
+        try:
+            cur.execute("TRUNCATE wbi_record")
+            cur.execute("INSERT INTO wbi_record VALUES (?, ?, ?)", (date, img_key, sub_key))
+        except Exception as e:
+            cur.close()
+            self.conn.rollback()
+            raise BiliDatebaseError(f"数据库设置wbi参数时发生错误:{e.args[0]}")
+        else:
+            cur.close()
+            self.conn.commit()
+            return True
+
         
 bili_database = BiliDatabase()
