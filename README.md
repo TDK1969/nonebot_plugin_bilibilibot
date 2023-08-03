@@ -7,7 +7,7 @@
 # nonebot-plugin-bilibilibot
 
 👾 _NoneBot bilibili通知插件_ 👾
-<p>version: 2.3.2</p>
+<p>version: 2.3.3</p>
     
 </div>
 
@@ -68,6 +68,13 @@
 
 # 更新日志
 [完整日志](https://github.com/TDK1969/nonebot_plugin_bilibilibot/blob/main/file/source/ChangeLog.md)
+
+- **ver 2.3.3**
+```
+1. 修复了由于b站接口改变导致-352和-401的错误
+2. 优化了网络IO
+```
+
 - **ver 2.3.2**
 ```
 1. 修复了由于b站接口改变导致关注up主命令失败的问题
