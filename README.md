@@ -7,7 +7,7 @@
 # nonebot-plugin-bilibilibot
 
 👾 _NoneBot bilibili通知插件_ 👾
-<p>version: 2.3.3</p>
+<p>version: 2.3.4</p>
     
 </div>
 
@@ -68,6 +68,12 @@
 
 # 更新日志
 [完整日志](https://github.com/TDK1969/nonebot_plugin_bilibilibot/blob/main/file/source/ChangeLog.md)
+
+- **ver 2.3.4**
+```
+1. 修复了番剧集数错误以及更新不推送的问题
+2. 增加了主播的下播提醒
+```
 
 - **ver 2.3.3**
 ```

@@ -38,8 +38,8 @@ async def check_telegram_update():
         if isinstance(results[i], tuple):
             if results[i][0] is True:
                 logger.info(f'[{__PLUGIN_NAME}]检测到影视剧 <{telegram_list[i]["telegram_title"]}> 更新')
-                text_msg = "【B站动态】\n《{}》已更新第{}集\n标题: {}\n链接: {}\n".format(
-                        telegram_list[i]["telegram_title"], results[i][1], results[i][2], results[i][3]
+                text_msg = "【B站动态】\n《{}》已更新\n标题: {}\n链接: {}\n".format(
+                        telegram_list[i]["telegram_title"],  results[i][2], results[i][3]
                     )
                 bili_task_manager.update_telegram_info(telegram_list[i]["season_id"], results[i][1], results[i][5])
                 cover_msg = MessageSegment.image(results[i][4])

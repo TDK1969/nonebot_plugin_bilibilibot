@@ -164,7 +164,7 @@ class BiliTaskManager():
 
         Args:
             season_id (str): season_id
-            episode (int): 最新集数
+            episode (int): 最新集数的时间
             is_finish (bool): 是否完结
 
         Returns:

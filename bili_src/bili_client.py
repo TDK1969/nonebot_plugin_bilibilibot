@@ -488,17 +488,17 @@ class BiliClient():
 
             return (season_id, season_title, latest_episode, is_finish)
     
-    async def get_telegram_latest_episode(self, client: httpx.AsyncClient, season_id: int, index: int) -> Tuple[bool, int, str, str, str, bool]:
+    async def get_telegram_latest_episode(self, client: httpx.AsyncClient, season_id: int, latest_timestamp: int) -> Tuple[bool, int, str, str, str, bool]:
         '''根据season_id获取番剧的最新集信息
 
         Args:
             season_id (int): season_id
-            index (int): 记录的最新集数
+            latest_timestamp (int): 记录的最新集数的发布时间
 
         Returns:
             Tuple[bool, int, str, str, str, bool]: 
             返回一个元组
-            [是否更新, 最新集数, 最新集标题, 最新集链接, 封面链接, 是否完结]
+            [是否更新, 最新集数发布时间, 最新集标题, 最新集链接, 封面链接, 是否完结]
         '''
 
         
@@ -517,13 +517,13 @@ class BiliClient():
         episodes = response['result']['episodes']
         is_finish = bool(response["result"]["publish"]["is_finish"])
 
-        if len(episodes) > index:
-            latest_episode = episodes[-1]
+        latest_episode = episodes[-1]
+        if latest_episode["pub_time"] > latest_timestamp:
+            # 有更新
             cover_url = latest_episode['cover']
-            title = latest_episode['long_title']
+            title = latest_episode['share_copy']
             play_url = latest_episode['share_url']
-            
-            return (True, len(episodes), title, play_url, cover_url, is_finish)
+            return (True, latest_episode["pub_time"], title, play_url, cover_url, is_finish)
         else:
             return (False, 0, "", "", "", is_finish)
     
