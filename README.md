@@ -30,7 +30,7 @@
 
 - 超级用户可对普通用户进行广播
 
-- 将机器人加入群组，向群友及时同时直播或更新消息
+- 将机器人加入群组，向群友及时通知直播或更新消息
 
 # 安装方式
 - ` nb plugin install nonebot-plugin-bilibilibot`
